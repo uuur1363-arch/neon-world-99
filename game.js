@@ -232,7 +232,18 @@ function runMiniGame() {
   function end(finalScore) {
     bestScore = Math.max(bestScore, finalScore);
     saveBest(bestScore);
-
+// if ranked, submit score
+try {
+  const mode = localStorage.getItem("neon99_mode") || "free";
+  if (mode === "ranked") {
+    const wallet = localStorage.getItem("neon99_wallet") || "";
+    fetch("/api/submit-score", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ wallet, score: finalScore, city: currentCity })
+    }).catch(()=>{});
+  }
+} catch(e) {}
     const unlocked = unlock.filter((u) => bestScore >= u.need).map((u) => u.name);
 
     alert(`SCORE: ${finalScore}\nBEST: ${bestScore}\nUNLOCKED: ${unlocked.join(", ")}`);
