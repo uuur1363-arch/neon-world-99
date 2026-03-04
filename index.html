@@ -1,25 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
+
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NEON WORLD 99</title>
 
-<style>
-body{
-background:black;
-color:#00ffff;
-font-family:monospace;
-text-align:center;
-margin-top:80px;
-}
+<title>NEON WORLD '99</title>
 
-button{
-padding:15px;
-font-size:18px;
-background:#00ffff;
-border:none;
-}
-</style>
+<link rel="stylesheet" href="styles.css">
 
 </head>
 
@@ -27,15 +14,23 @@ border:none;
 
 <h1>NEON WORLD '99</h1>
 
-<p>Insert Coin</p>
+<h2>Select City</h2>
 
-<button onclick="start()">PLAY DEMO</button>
+<button onclick="city('New York')">NEW YORK</button>
+<br><br>
 
-<script>
-function start(){
-alert("Game starting soon...");
-}
-</script>
+<button onclick="city('Tokyo')">TOKYO</button>
+<br><br>
+
+<button onclick="city('Berlin')">BERLIN</button>
+<br><br>
+
+<button onclick="city('Rio')">RIO</button>
+<br><br>
+
+<button onclick="city('Seoul')">SEOUL</button>
+
+<script src="game.js"></script>
 
 </body>
 </html>
