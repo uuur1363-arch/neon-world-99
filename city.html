@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NEON WORLD '99 — City</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="screen">
+    <div class="logo">
+      <div class="title">NEON WORLD '99</div>
+      <div class="tagline" id="modeLine">MODE: ...</div>
+    </div>
+
+    <div class="panel">
+      <h2>Select City</h2>
+      <button onclick="city('New York')">NEW YORK</button><br><br>
+      <button onclick="city('Tokyo')">TOKYO</button><br><br>
+      <button onclick="city('Berlin')">BERLIN</button><br><br>
+      <button onclick="city('Rio')">RIO</button><br><br>
+      <button onclick="city('Seoul')">SEOUL</button>
+      <div style="height:14px"></div>
+      <button onclick="location.href='/'">BACK</button>
+    </div>
+  </div>
+
+  <script>
+    const m = localStorage.getItem("neon99_mode") || "free";
+    document.getElementById("modeLine").textContent =
+      "MODE: " + (m === "ranked" ? "RANKED (0.01 SOL)" : "FREE PLAY");
+  </script>
+  <script src="game.js"></script>
+</body>
+</html>
