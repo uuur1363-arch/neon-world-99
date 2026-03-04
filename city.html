@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <title>NEON WORLD '99 — City</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <div id="crt"></div>
+
   <div class="screen">
     <div class="logo">
       <div class="title">NEON WORLD '99</div>
@@ -13,22 +15,154 @@
     </div>
 
     <div class="panel">
+
+      <div id="rankedGate" style="display:none;">
+        <div class="muted small" id="rgStatus">RANKED requires payment.</div>
+        <div style="height:10px"></div>
+
+        <button class="btn" id="btnOpenPhantom" style="display:none;">OPEN IN PHANTOM</button>
+        <div style="height:10px"></div>
+
+        <button class="btn" id="btnConnect">CONNECT WALLET</button>
+        <div style="height:10px"></div>
+
+        <button class="btn" id="btnPay" disabled>PAY 0.01 SOL</button>
+        <div style="height:10px"></div>
+
+        <div class="muted small" id="rgWallet"></div>
+        <div class="muted small" id="rgPass"></div>
+        <div class="hr"></div>
+      </div>
+
       <h2>Select City</h2>
+
       <button onclick="city('New York')">NEW YORK</button><br><br>
       <button onclick="city('Tokyo')">TOKYO</button><br><br>
       <button onclick="city('Berlin')">BERLIN</button><br><br>
       <button onclick="city('Rio')">RIO</button><br><br>
       <button onclick="city('Seoul')">SEOUL</button>
+
       <div style="height:14px"></div>
-      <button onclick="location.href='/'">BACK</button>
+      <button class="btn btn-ghost" onclick="location.href='/'">BACK</button>
     </div>
   </div>
 
+  <!-- Solana web3 -->
+  <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
+
   <script>
-    const m = localStorage.getItem("neon99_mode") || "free";
+    const mode = localStorage.getItem("neon99_mode") || "free";
     document.getElementById("modeLine").textContent =
-      "MODE: " + (m === "ranked" ? "RANKED (0.01 SOL)" : "FREE PLAY");
+      "MODE: " + (mode === "ranked" ? "RANKED (0.01 SOL)" : "FREE PLAY");
+
+    const gate = document.getElementById("rankedGate");
+    const statusEl = document.getElementById("rgStatus");
+    const walletEl = document.getElementById("rgWallet");
+    const passEl = document.getElementById("rgPass");
+    const btnOpen = document.getElementById("btnOpenPhantom");
+    const btnConnect = document.getElementById("btnConnect");
+    const btnPay = document.getElementById("btnPay");
+
+    if (mode === "ranked") gate.style.display = "block";
+
+    function openInPhantom() {
+      const url = encodeURIComponent(location.href);
+      location.href = "https://phantom.app/ul/browse/" + url;
+    }
+
+    if (!window.solana || !window.solana.isPhantom) {
+      btnOpen.style.display = "block";
+      btnOpen.onclick = openInPhantom;
+    }
+
+    let walletPubkey = null;
+
+    async function connectWallet() {
+      if (!window.solana) {
+        statusEl.textContent = "Phantom not found. Tap OPEN IN PHANTOM.";
+        return;
+      }
+      const resp = await window.solana.connect();
+      walletPubkey = resp.publicKey.toString();
+      localStorage.setItem("neon99_wallet", walletPubkey);
+
+      walletEl.textContent = "WALLET: " + walletPubkey.slice(0, 6) + "..." + walletPubkey.slice(-4);
+      statusEl.textContent = "Connected. Checking pass...";
+      await refreshPass();
+      btnPay.disabled = false;
+    }
+
+    async function refreshPass(){
+      if (!walletPubkey) return;
+      const r = await fetch("/api/me?wallet=" + encodeURIComponent(walletPubkey));
+      const j = await r.json();
+      if (j.ok && j.pass) {
+        localStorage.setItem("neon99_pass_until", String(j.pass_until));
+        passEl.textContent = "PASS: active (24h)";
+        statusEl.textContent = "Ranked unlocked!";
+      } else {
+        passEl.textContent = "PASS: not active";
+        statusEl.textContent = "Pay 0.01 SOL to unlock ranked (24h).";
+      }
+    }
+
+    btnConnect.onclick = () => connectWallet().catch(e => {
+      statusEl.textContent = "Connect error: " + (e.message || e);
+    });
+
+    function randomMemo() {
+      return "NEON99|" + Date.now() + "|" + Math.random().toString(16).slice(2);
+    }
+
+    async function payRanked() {
+      if (!walletPubkey) return;
+
+      const memo = randomMemo();
+
+      const treasury = new solanaWeb3.PublicKey("8UH2aQubZ5kjR5PpesoPio4zkAfafoMY5hHuKrPYz6ct");
+      const from = new solanaWeb3.PublicKey(walletPubkey);
+
+      const lamports = Math.round(0.01 * 1e9);
+
+      const tx = new solanaWeb3.Transaction();
+      tx.add(solanaWeb3.SystemProgram.transfer({
+        fromPubkey: from,
+        toPubkey: treasury,
+        lamports
+      }));
+
+      // Memo
+      const memoProgramId = new solanaWeb3.PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr");
+      tx.add({ keys: [], programId: memoProgramId, data: new TextEncoder().encode(memo) });
+
+      tx.feePayer = from;
+
+      const conn = new solanaWeb3.Connection(solanaWeb3.clusterApiUrl("mainnet-beta"), "confirmed");
+      const { blockhash } = await conn.getLatestBlockhash("confirmed");
+      tx.recentBlockhash = blockhash;
+
+      statusEl.textContent = "Sending transaction...";
+      const { signature } = await window.solana.signAndSendTransaction(tx);
+
+      statusEl.textContent = "Verifying payment...";
+      const r = await fetch("/api/verify-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wallet: walletPubkey, signature, memo })
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || "verify failed");
+
+      localStorage.setItem("neon99_pass_until", String(j.pass_until));
+      passEl.textContent = "PASS: active (24h)";
+      statusEl.textContent = "Payment verified. Ranked unlocked!";
+    }
+
+    btnPay.onclick = () => payRanked().catch(e => {
+      statusEl.textContent = "Pay error: " + (e.message || e);
+    });
   </script>
+
   <script src="game.js"></script>
 </body>
 </html>
