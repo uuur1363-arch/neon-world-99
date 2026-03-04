@@ -306,3 +306,16 @@ function leaderboard(){
 alert("GLOBAL LEADERBOARD\nComing soon")
 
 }
+function goFree(){
+  localStorage.setItem("neon99_mode","free");
+  location.href = "/city.html";
+}
+
+function goRanked(){
+  localStorage.setItem("neon99_mode","ranked");
+  location.href = "/city.html";
+}
+
+function goBoard(){
+  location.href = "/board.html";
+}
