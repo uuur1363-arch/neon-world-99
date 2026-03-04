@@ -1,18 +1,24 @@
-// save & load best score
-function loadBest(){
-  try{
+// NEON WORLD '99 — Mobile Web MVP (Demo)
+// City select -> 60s mini game -> score -> unlock cities
+// BEST SCORE is saved in localStorage
+
+// ---------- storage ----------
+function loadBest() {
+  try {
     const v = localStorage.getItem("neon99_best");
-    return v ? parseInt(v,10) : 0;
-  }catch(e){ return 0; }
+    return v ? parseInt(v, 10) : 0;
+  } catch (e) {
+    return 0;
+  }
 }
 
-function saveBest(v){
-  try{
+function saveBest(v) {
+  try {
     localStorage.setItem("neon99_best", String(v));
-  }catch(e){}
-}// NEON WORLD '99 — Mobile Web MVP (Demo)
-// City select -> 60s mini game -> score -> unlock cities
+  } catch (e) {}
+}
 
+// ---------- state ----------
 let currentCity = "New York";
 let bestScore = loadBest();
 
@@ -25,25 +31,27 @@ const unlock = [
   { name: "Seoul", need: 80000 },
 ];
 
+// This function is called from index.html buttons: onclick="city('Tokyo')"
 function city(name) {
   currentCity = name;
   startGame();
 }
 
 function startGame() {
-  // Replace page with game UI (simple + fast)
+  // Replace page with game UI (simple MVP)
   document.body.innerHTML = `
     <div id="crt"></div>
     <div style="text-align:center; padding:16px; color:#fff; font-family:monospace;">
       <h1 style="color:#00d4ff; margin:10px 0;">NEON WORLD '99</h1>
-      <div style="color:rgba(255,255,255,.75); font-size:12px;">CITY: <b>${escapeHtml(
-        currentCity
-      )}</b> · TAP to hit</div>
+      <div style="color:rgba(255,255,255,.75); font-size:12px;">
+        CITY: <b>${escapeHtml(currentCity)}</b> · TAP to hit
+      </div>
 
       <div style="display:flex; justify-content:center; gap:14px; margin:10px 0; flex-wrap:wrap;">
         <div style="color:rgba(255,255,255,.75); font-size:12px;">TIME <b id="t">60</b></div>
         <div style="color:rgba(255,255,255,.75); font-size:12px;">SCORE <b id="s">0</b></div>
         <div style="color:rgba(255,255,255,.75); font-size:12px;">COMBO <b id="c">x0</b></div>
+        <div style="color:rgba(255,255,255,.75); font-size:12px;">BEST <b id="b">${bestScore}</b></div>
       </div>
 
       <canvas id="cv" width="390" height="600"
@@ -61,20 +69,19 @@ function startGame() {
   `;
 
   document.getElementById("exit").onclick = backToCities;
-
   runMiniGame();
 }
 
 function backToCities() {
-  // Reload original city screen by reloading page (simple MVP)
+  // Simple MVP: reload to return to city screen
   location.reload();
 }
 
 function runMiniGame() {
   const cv = document.getElementById("cv");
   const ctx = cv.getContext("2d");
-  const W = cv.width,
-    H = cv.height;
+  const W = cv.width;
+  const H = cv.height;
 
   let tLeft = 60.0;
   let score = 0;
@@ -174,7 +181,7 @@ function runMiniGame() {
       n.y += (reverse ? -1 : 1) * n.speed * dt;
     }
 
-    // miss notes (if pass hit line)
+    // miss notes
     const hitY = H * 0.78;
     for (let i = notes.length - 1; i >= 0; i--) {
       if (notes[i].y > hitY + 40) {
@@ -182,7 +189,7 @@ function runMiniGame() {
         combo = Math.max(0, combo - 3);
         score = Math.max(0, score - 120);
       }
-      if (notes[i] && notes[i].y < -60) notes.splice(i, 1);
+      if (notes[i] && notes[i].y < -80) notes.splice(i, 1);
     }
 
     // passive tempo bonus near 120
@@ -207,21 +214,12 @@ function runMiniGame() {
   requestAnimationFrame(loop);
 
   function end(finalScore) {
+    bestScore = Math.max(bestScore, finalScore);
+    saveBest(bestScore);
 
-  bestScore = Math.max(bestScore, finalScore);
-  saveBest(bestScore);
+    const unlocked = unlock.filter((u) => bestScore >= u.need).map((u) => u.name);
 
-  alert("SCORE: " + finalScore + " BEST: " + bestScore);
-
-  location.reload();
-}
-
-    // Unlock notice
-    const newly = unlock.filter((u) => bestScore >= u.need).map((u) => u.name);
-    alert(
-      `SCORE: ${finalScore}\nBEST: ${bestScore}\nUNLOCKED: ${newly.join(", ")}`
-    );
-
+    alert(`SCORE: ${finalScore}\nBEST: ${bestScore}\nUNLOCKED: ${unlocked.join(", ")}`);
     backToCities();
   }
 }
@@ -278,8 +276,6 @@ function clamp(v, a, b) {
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (m) => {
-    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[
-      m
-    ];
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m];
   });
 }
