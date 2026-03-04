@@ -1,3 +1,11 @@
+const mode = localStorage.getItem("neon99_mode") || "free";
+if (mode === "ranked") {
+  const pu = parseInt(localStorage.getItem("neon99_pass_until") || "0", 10);
+  if (Date.now() > pu) {
+    alert("RANKED locked. Connect + Pay 0.01 SOL first.");
+    return;
+  }
+}
 // NEON WORLD '99 — Mobile Web MVP (Demo)
 // City select -> 60s mini game -> score -> unlock cities
 // BEST SCORE is saved in localStorage
