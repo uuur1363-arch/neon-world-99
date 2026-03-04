@@ -287,3 +287,22 @@ function escapeHtml(s) {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m];
   });
 }
+function freeMode(){
+
+alert("FREE MODE");
+
+location.reload()
+
+}
+
+function rankedMode(){
+
+alert("RANKED MODE\nEntry: 0.01 SOL")
+
+}
+
+function leaderboard(){
+
+alert("GLOBAL LEADERBOARD\nComing soon")
+
+}
