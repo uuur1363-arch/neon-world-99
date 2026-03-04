@@ -33,6 +33,14 @@ const unlock = [
 
 // This function is called from index.html buttons: onclick="city('Tokyo')"
 function city(name) {
+
+  const cityData = unlock.find(c => c.name === name);
+
+  if(bestScore < cityData.need){
+    alert("LOCKED\nYou need " + cityData.need + " score");
+    return;
+  }
+
   currentCity = name;
   startGame();
 }
