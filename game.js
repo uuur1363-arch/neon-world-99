@@ -1,8 +1,20 @@
-// NEON WORLD '99 — Mobile Web MVP (Demo)
+// save & load best score
+function loadBest(){
+  try{
+    const v = localStorage.getItem("neon99_best");
+    return v ? parseInt(v,10) : 0;
+  }catch(e){ return 0; }
+}
+
+function saveBest(v){
+  try{
+    localStorage.setItem("neon99_best", String(v));
+  }catch(e){}
+}// NEON WORLD '99 — Mobile Web MVP (Demo)
 // City select -> 60s mini game -> score -> unlock cities
 
 let currentCity = "New York";
-let bestScore = 0;
+let bestScore = loadBest();
 
 // Unlock thresholds
 const unlock = [
@@ -195,7 +207,14 @@ function runMiniGame() {
   requestAnimationFrame(loop);
 
   function end(finalScore) {
-    bestScore = Math.max(bestScore, finalScore);
+
+  bestScore = Math.max(bestScore, finalScore);
+  saveBest(bestScore);
+
+  alert("SCORE: " + finalScore + " BEST: " + bestScore);
+
+  location.reload();
+}
 
     // Unlock notice
     const newly = unlock.filter((u) => bestScore >= u.need).map((u) => u.name);
