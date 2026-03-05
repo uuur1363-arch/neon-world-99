@@ -2,10 +2,8 @@
 <html>
 
 <head>
-
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
-<title>Choose City</title>
+<title>Select City</title>
 
 <style>
 
@@ -15,6 +13,11 @@ margin:0;
 font-family:monospace;
 color:white;
 text-align:center;
+}
+
+h2{
+margin-top:20px;
+color:#00d4ff;
 }
 
 #map{
@@ -41,10 +44,10 @@ margin:auto;
 
 .city span{
 font-size:12px;
+color:white;
 }
 
 </style>
-
 </head>
 
 <body>
@@ -55,44 +58,64 @@ font-size:12px;
 
 <img src="worldmap.png">
 
+<!-- USA -->
 <div class="city" style="top:40%;left:20%" onclick="city('New York')">
-<img src="flag_us.png"><span>New York</span>
+<img src="flag_us.png">
+<span>New York</span>
 </div>
 
+<!-- JAPAN -->
 <div class="city" style="top:45%;left:80%" onclick="city('Tokyo')">
-<img src="flag_jp.png"><span>Tokyo</span>
+<img src="flag_jp.png">
+<span>Tokyo</span>
 </div>
 
+<!-- GERMANY -->
 <div class="city" style="top:42%;left:52%" onclick="city('Berlin')">
-<img src="flag_de.png"><span>Berlin</span>
+<img src="flag_de.png">
+<span>Berlin</span>
 </div>
 
+<!-- BRAZIL -->
 <div class="city" style="top:60%;left:30%" onclick="city('Rio')">
-<img src="flag_br.png"><span>Rio</span>
+<img src="flag_br.png">
+<span>Rio</span>
 </div>
 
+<!-- SOUTH KOREA -->
 <div class="city" style="top:50%;left:75%" onclick="city('Seoul')">
-<img src="flag_kr.png"><span>Seoul</span>
+<img src="flag_kr.png">
+<span>Seoul</span>
 </div>
 
+<!-- UK -->
 <div class="city" style="top:38%;left:48%" onclick="city('London')">
-<img src="flag_gb.png"><span>London</span>
+<img src="flag_gb.png">
+<span>London</span>
 </div>
 
+<!-- FRANCE -->
 <div class="city" style="top:45%;left:50%" onclick="city('Paris')">
-<img src="flag_fr.png"><span>Paris</span>
+<img src="flag_fr.png">
+<span>Paris</span>
 </div>
 
+<!-- UAE -->
 <div class="city" style="top:48%;left:60%" onclick="city('Dubai')">
-<img src="flag_ae.png"><span>Dubai</span>
+<img src="flag_ae.png">
+<span>Dubai</span>
 </div>
 
+<!-- SINGAPORE -->
 <div class="city" style="top:55%;left:70%" onclick="city('Singapore')">
-<img src="flag_sg.png"><span>Singapore</span>
+<img src="flag_sg.png">
+<span>Singapore</span>
 </div>
 
-<div class="city" style="top:75%;left:85%" onclick="city('Sydney')">
-<img src="flag_au.png"><span>Sydney</span>
+<!-- TURKEY -->
+<div class="city" style="top:45%;left:55%" onclick="city('Istanbul')">
+<img src="flag_tr.png">
+<span>Istanbul</span>
 </div>
 
 </div>
