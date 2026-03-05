@@ -1,43 +1,35 @@
 <!DOCTYPE html>
 <html>
-
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NEON WORLD '99</title>
-<link rel="stylesheet" href="styles.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NEON WORLD '99</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
-
 <body>
 
 <div style="text-align:center;margin-top:120px;font-family:monospace;color:#00d4ff">
+  <h1>NEON WORLD '99</h1>
+  <p>INSERT COIN</p>
+  <br>
 
-<h1>NEON WORLD '99</h1>
-<p>INSERT COIN</p>
+  <button onclick="startFree()">START GAME</button>
+  <br><br>
 
-<br>
+  <button onclick="startRanked()">RANKED MODE (0.01 SOL)</button>
+  <br><br>
 
-<button onclick="startFree()">START GAME</button>
-<br><br>
-
-<button onclick="startRanked()">RANKED MODE (0.01 SOL)</button>
-<br><br>
-
-<button onclick="location.href='board.html'">LEADERBOARD</button>
-
+  <button onclick="location.href='board.html'">LEADERBOARD</button>
 </div>
 
 <script>
-
 function startFree(){
   localStorage.setItem("neon99_mode","free");
   location.href="city.html";
 }
-
 function startRanked(){
   localStorage.setItem("neon99_mode","ranked");
   location.href="city.html";
 }
-
 </script>
 
 </body>
