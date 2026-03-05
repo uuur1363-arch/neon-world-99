@@ -228,6 +228,9 @@ function backToCities() {
 // =====================
 function runMiniGame() {
   const cv = document.getElementById("cv");
+  cv.addEventListener("touchstart", startMusic);
+cv.addEventListener("mousedown", startMusic);
+cv.addEventListener("click", startMusic);
   const ctx = cv.getContext("2d");
   const W = cv.width;
   const H = cv.height;
