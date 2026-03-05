@@ -240,21 +240,17 @@ function runMiniGame() {
 
     // ✅ submit score ONLY ONCE (ranked only)
     try {
-      const modeNow = localStorage.getItem("neon99_mode") || "free";
-      if (modeNow === "ranked") {
-        const wallet = localStorage.getItem("neon99_wallet") || "";
-        if (wallet) {
-          fetch("/api/submit-score", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              wallet,
-              score: Number(finalScore),
-              city: currentCity,
-            }),
-          }).catch(() => {});
-        }
-      }
+const wallet = localStorage.getItem("neon99_wallet") || "guest";
+
+fetch("/api/submit-score", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    wallet,
+    score: Number(finalScore),
+    city: currentCity
+  })
+}).catch(()=>{});
     } catch (e) {}
 
     const unlocked = unlock.filter((u) => bestScore >= u.need).map((u) => u.name);
