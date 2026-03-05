@@ -375,6 +375,7 @@ cv.addEventListener("click", startMusic);
     } catch (e) {}
 
     const unlocked = unlock.filter((u) => bestScore >= u.need).map((u) => u.name);
+   stopMusic();
     alert(`SCORE: ${finalScore}\nBEST: ${bestScore}\nUNLOCKED: ${unlocked.join(", ")}`);
     backToCities();
   }
