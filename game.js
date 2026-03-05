@@ -14,6 +14,11 @@ const UNLOCKS = [
   { name: "Berlin", need: 25000 },
   { name: "Rio", need: 50000 },
   { name: "Seoul", need: 80000 },
+  { name: "London", need: 120000 },
+  { name: "Paris", need: 170000 },
+  { name: "Dubai", need: 230000 },
+  { name: "Singapore", need: 300000 },
+  { name: "Istanbul", need: 380000 }
 ];
 
 // ---------------- STORAGE ----------------
