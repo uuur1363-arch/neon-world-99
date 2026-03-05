@@ -1,3 +1,6 @@
+const sHit = new Audio("/hit.mp3");
+const sMiss = new Audio("/miss.mp3");
+const sCombo = new Audio("/combo.mp3");
 // NEON WORLD '99 — CLEAN SINGLE FILE (City Music + City Background + Game + Submit Score)
 // REQUIRED in root: bgm_ny.mp3, bgm_tokyo.mp3, bgm_berlin.mp3
 // OPTIONAL in root: bg_ny.jpg, bg_tokyo.jpg, bg_berlin.jpg
