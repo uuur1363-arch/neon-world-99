@@ -103,6 +103,15 @@ window.city = function (name) {
 
 // ----- GAME UI -----
 function startGame() {
+
+  const music = new Audio("/bgm_ny.mp3");
+  music.loop = true;
+  music.volume = 0.4;
+
+  document.addEventListener("click", () => {
+    music.play();
+  }, { once: true });
+
   document.body.innerHTML = `
   <div style="text-align:center; padding:16px; color:#fff; font-family:monospace;">
     <h1 style="color:#00d4ff; margin:10px 0;">NEON WORLD '99</h1>
