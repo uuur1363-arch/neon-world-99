@@ -409,3 +409,14 @@ window.goRanked = function () {
 window.goBoard = function () {
   location.href = "/board.html";
 };
+window.goFree = function () {
+  location.href = "city.html";
+};
+
+window.goRanked = function () {
+  location.href = "city.html";
+};
+
+window.goBoard = function () {
+  location.href = "board.html";
+};
