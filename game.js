@@ -106,6 +106,7 @@ function backToCities() {
 }
 
 function runMiniGame() {
+  bgm.play().catch(()=>{});
   const cv = document.getElementById("cv");
   const ctx = cv.getContext("2d");
   const W = cv.width;
@@ -151,10 +152,12 @@ function runMiniGame() {
       combo++;
       score += 200 + combo * 10;
       flash("PERFECT");
+      hitSound.play().catch(()=>{});
     } else {
       combo = Math.max(0, combo - 2);
       score = Math.max(0, score - 80);
       flash("MISS");
+      missSound.play().catch(()=>{});
     }
   };
 
@@ -261,7 +264,8 @@ fetch("/api/submit-score", {
     } catch (e) {}
 
     const unlocked = unlock.filter((u) => bestScore >= u.need).map((u) => u.name);
-
+bgm.pause();
+bgm.currentTime = 0;
     alert(`SCORE: ${finalScore}\nBEST: ${bestScore}\nUNLOCKED: ${unlocked.join(", ")}`);
     backToCities();
   }
