@@ -1,4 +1,7 @@
+export const runtime = "nodejs";
+
 import { createClient } from "@supabase/supabase-js";
+import fetch from "node-fetch";
 
 export function supa() {
   return createClient(
@@ -6,7 +9,7 @@ export function supa() {
     process.env.SUPABASE_SERVICE_ROLE_KEY,
     {
       auth: { persistSession: false },
-      global: { fetch: (...args) => fetch(...args) }
+      global: { fetch }
     }
   );
 }
