@@ -1,15 +1,85 @@
-// ---------- MUSIC ----------
-let bgm = new Audio("/audio/bgm.mp3");
-bgm.loop = true;
-bgm.volume = 0.4;
+// NEON WORLD '99 — Clean Mobile Web MVP
+// City select -> 60s rhythm mini game -> score -> unlock cities
+// Global leaderboard via /api/submit-score + /api/score
 
-let hitSound = new Audio("/audio/hit.mp3");
-let missSound = new Audio("/audio/miss.mp3");
-// NEON WORLD '99 — Mobile Web MVP (Demo)
-// City select -> 60s mini game -> score -> unlock cities
-// BEST SCORE is saved in localStorage
+// =====================
+// AUDIO (CDN) — change URLs later if you want
+// =====================
+const AUDIO = {
+  muted: false,
+  unlocked: false,
+  bgm: null,
+  hit: null,
+  miss: null,
+};
 
-// ---------- storage ----------
+// You can replace these with your own links later.
+// (Keeping CDN avoids the "audio folder" trouble on mobile GitHub.)
+const AUDIO_URLS = {
+  bgm: "https://cdn.pixabay.com/download/audio/2022/03/15/audio_6c6a4c7e7b.mp3",
+  hit: "https://cdn.pixabay.com/download/audio/2022/03/15/audio_c3c8c8c8c5.mp3",
+  miss: "https://cdn.pixabay.com/download/audio/2022/03/15/audio_7c0d0a0a6c.mp3",
+};
+
+function audioInit() {
+  if (AUDIO.bgm) return;
+  AUDIO.bgm = new Audio(AUDIO_URLS.bgm);
+  AUDIO.bgm.loop = true;
+  AUDIO.bgm.volume = 0.35;
+
+  AUDIO.hit = new Audio(AUDIO_URLS.hit);
+  AUDIO.hit.volume = 0.85;
+
+  AUDIO.miss = new Audio(AUDIO_URLS.miss);
+  AUDIO.miss.volume = 0.85;
+}
+
+// must be called only after user gesture (tap/click)
+async function audioUnlockAndStart() {
+  if (AUDIO.muted) return;
+  audioInit();
+  if (AUDIO.unlocked) return;
+
+  AUDIO.unlocked = true;
+  try {
+    await AUDIO.bgm.play();
+  } catch (e) {
+    // mobile may still block; we'll try again on next tap
+  }
+}
+
+function audioStop() {
+  try {
+    if (AUDIO.bgm) {
+      AUDIO.bgm.pause();
+      AUDIO.bgm.currentTime = 0;
+    }
+  } catch (e) {}
+}
+
+function audioSfx(which) {
+  if (AUDIO.muted) return;
+  audioInit();
+  const a = which === "hit" ? AUDIO.hit : AUDIO.miss;
+  if (!a) return;
+  try {
+    a.currentTime = 0;
+    a.play().catch(() => {});
+  } catch (e) {}
+}
+
+function audioToggleMute() {
+  AUDIO.muted = !AUDIO.muted;
+  try {
+    if (AUDIO.muted) AUDIO.bgm && AUDIO.bgm.pause();
+    else audioUnlockAndStart();
+  } catch (e) {}
+  return AUDIO.muted;
+}
+
+// =====================
+// STORAGE
+// =====================
 function loadBest() {
   try {
     const v = localStorage.getItem("neon99_best");
@@ -25,11 +95,12 @@ function saveBest(v) {
   } catch (e) {}
 }
 
-// ---------- state ----------
+// =====================
+// STATE
+// =====================
 let currentCity = "New York";
 let bestScore = loadBest();
 
-// Unlock thresholds
 const unlock = [
   { name: "New York", need: 0 },
   { name: "Tokyo", need: 10000 },
@@ -38,14 +109,33 @@ const unlock = [
   { name: "Seoul", need: 80000 },
 ];
 
-// This function is called from city.html buttons: onclick="city('Tokyo')"
+// =====================
+// NAV (called from buttons)
+// =====================
+function goFree() {
+  localStorage.setItem("neon99_mode", "free");
+  location.href = "/city.html";
+}
+
+function goRanked() {
+  localStorage.setItem("neon99_mode", "ranked");
+  location.href = "/city.html";
+}
+
+function goBoard() {
+  location.href = "/board.html";
+}
+
+// =====================
+// CITY SELECT (called from city.html onclick="city('Tokyo')")
+// =====================
 function city(name) {
-  // ✅ ranked lock must be here (NOT at top of file)
+  // Ranked lock check (pass_until)
   const mode = localStorage.getItem("neon99_mode") || "free";
   if (mode === "ranked") {
     const pu = parseInt(localStorage.getItem("neon99_pass_until") || "0", 10);
     if (Date.now() > pu) {
-      alert("RANKED locked. Connect + Pay 0.01 SOL first.");
+      alert("RANKED locked.\nConnect + Pay 0.01 SOL first.");
       return;
     }
   }
@@ -66,9 +156,7 @@ function city(name) {
 }
 
 function startGame() {
-  // Replace page with game UI (simple MVP)
   document.body.innerHTML = `
-    <div id="crt"></div>
     <div style="text-align:center; padding:16px; color:#fff; font-family:monospace;">
       <h1 style="color:#00d4ff; margin:10px 0;">NEON WORLD '99</h1>
       <div style="color:rgba(255,255,255,.75); font-size:12px;">
@@ -85,34 +173,42 @@ function startGame() {
       <canvas id="cv" width="390" height="600"
         style="width:100%; max-width:420px; border:1px solid rgba(255,255,255,.12); border-radius:12px; background:rgba(0,0,0,.35);"></canvas>
 
+      <div style="margin-top:10px; display:flex; gap:10px; justify-content:center;">
+        <button id="mute"
+          style="padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,.2); background:transparent; color:#fff;">
+          MUTE
+        </button>
+        <button id="exit"
+          style="padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,.2); background:transparent; color:#fff;">
+          BACK TO CITIES
+        </button>
+      </div>
+
       <div style="margin-top:10px; color:rgba(255,255,255,.7); font-size:12px;">
         Swipe L/R = tempo · Hold = reverse
       </div>
-
-      <button id="exit"
-        style="margin-top:14px; padding:12px 14px; border-radius:10px; border:1px solid rgba(255,255,255,.2); background:transparent; color:#fff;">
-        BACK TO CITIES
-      </button>
     </div>
   `;
 
   document.getElementById("exit").onclick = backToCities;
+  document.getElementById("mute").onclick = () => {
+    const m = audioToggleMute();
+    document.getElementById("mute").textContent = m ? "UNMUTE" : "MUTE";
+  };
+
   runMiniGame();
 }
 
 function backToCities() {
-  // Simple MVP: reload to return to city screen
+  audioStop();
   location.reload();
 }
 
+// =====================
+// GAME LOOP
+// =====================
 function runMiniGame() {
-  bgm.play().catch(()=>{});
   const cv = document.getElementById("cv");
-  cv.addEventListener("click", () => {
-  if (bgm.paused) {
-    bgm.play().catch(()=>{});
-  }
-});
   const ctx = cv.getContext("2d");
   const W = cv.width;
   const H = cv.height;
@@ -129,8 +225,13 @@ function runMiniGame() {
   const notes = [];
   let spawnAcc = 0;
 
-  // touch for swipe
+  // swipe
   let sx = null;
+
+  // 🔑 Audio unlock on first gesture
+  const unlockAudioOnce = () => audioUnlockAndStart();
+  cv.addEventListener("touchstart", unlockAudioOnce, { passive: true });
+  cv.addEventListener("mousedown", unlockAudioOnce);
 
   const onTouchStart = (e) => {
     sx = e.touches[0].clientX;
@@ -148,7 +249,7 @@ function runMiniGame() {
     sx = null;
   };
 
-  // click/tap = hit
+  // tap = hit
   const onTap = () => {
     const hitY = H * 0.78;
     const idx = notes.findIndex((n) => Math.abs(n.y - hitY) < 18);
@@ -157,16 +258,16 @@ function runMiniGame() {
       combo++;
       score += 200 + combo * 10;
       flash("PERFECT");
-      hitSound.play().catch(()=>{});
+      audioSfx("hit");
     } else {
       combo = Math.max(0, combo - 2);
       score = Math.max(0, score - 80);
       flash("MISS");
-      missSound.play().catch(()=>{});
+      audioSfx("miss");
     }
   };
 
-  // hold to reverse
+  // hold = reverse
   let holdTimer = null;
   const onHoldStart = () => {
     holdTimer = setTimeout(() => {
@@ -250,32 +351,38 @@ function runMiniGame() {
   requestAnimationFrame(loop);
 
   function end(finalScore) {
+    audioStop();
+
     bestScore = Math.max(bestScore, finalScore);
     saveBest(bestScore);
 
-    // ✅ submit score ONLY ONCE (ranked only)
+    // ✅ submit score (FREE -> guest, RANKED -> wallet if exists else guest)
     try {
-const wallet = localStorage.getItem("neon99_wallet") || "guest";
+      const modeNow = localStorage.getItem("neon99_mode") || "free";
+      const wallet =
+        (modeNow === "ranked" ? localStorage.getItem("neon99_wallet") : null) ||
+        "guest";
 
-fetch("/api/submit-score", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    wallet,
-    score: Number(finalScore),
-    city: currentCity
-  })
-}).catch(()=>{});
+      fetch("/api/submit-score", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          wallet,
+          score: Number(finalScore),
+          city: currentCity,
+        }),
+      }).catch(() => {});
     } catch (e) {}
 
     const unlocked = unlock.filter((u) => bestScore >= u.need).map((u) => u.name);
-bgm.pause();
-bgm.currentTime = 0;
     alert(`SCORE: ${finalScore}\nBEST: ${bestScore}\nUNLOCKED: ${unlocked.join(", ")}`);
     backToCities();
   }
 }
 
+// =====================
+// RENDER
+// =====================
 function draw(ctx, W, H, bpm, reverse, notes, msg, msgT) {
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = "rgba(0,0,0,0.45)";
@@ -330,32 +437,4 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (m) => {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m];
   });
-}
-
-// ---- UI navigation helpers (called from buttons in html) ----
-function goFree() {
-  localStorage.setItem("neon99_mode", "free");
-  location.href = "/city.html";
-}
-
-function goRanked() {
-  localStorage.setItem("neon99_mode", "ranked");
-  location.href = "/city.html";
-}
-
-function goBoard() {
-  location.href = "/board.html";
-}
-
-// (legacy unused funcs — you can delete later)
-function freeMode() {
-  alert("FREE MODE");
-  location.reload();
-}
-function rankedMode() {
-  alert("RANKED MODE\nEntry: 0.01 SOL");
-}
-function leaderboard() {
-  // instead of alert, go to board
-  location.href = "/board.html";
 }
