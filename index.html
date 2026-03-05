@@ -16,16 +16,29 @@
 
 <br>
 
-<button onclick="location.href='city.html'">START GAME</button>
+<button onclick="startFree()">START GAME</button>
 <br><br>
 
-<button onclick="location.href='city.html'">RANKED MODE (0.01 SOL)</button>
+<button onclick="startRanked()">RANKED MODE (0.01 SOL)</button>
 <br><br>
 
 <button onclick="location.href='board.html'">LEADERBOARD</button>
 
 </div>
 
-</body>
+<script>
 
+function startFree(){
+  localStorage.setItem("neon99_mode","free");
+  location.href="city.html";
+}
+
+function startRanked(){
+  localStorage.setItem("neon99_mode","ranked");
+  location.href="city.html";
+}
+
+</script>
+
+</body>
 </html>
