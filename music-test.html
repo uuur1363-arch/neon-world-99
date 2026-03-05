@@ -1,0 +1,22 @@
+<!doctype html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Music Test</title>
+</head>
+<body style="background:#000;color:#fff;font-family:monospace;padding:16px">
+  <h3>Music Test</h3>
+  <p>Butona basınca müzik başlamalı.</p>
+  <button id="p" style="padding:14px 16px;width:100%">PLAY NY</button>
+  <button id="s" style="padding:14px 16px;width:100%;margin-top:10px">STOP</button>
+
+  <script>
+    const a = new Audio("/bgm_ny.mp3");
+    a.loop = true;
+    a.volume = 0.4;
+
+    document.getElementById("p").onclick = () => a.play().catch(e => alert(String(e)));
+    document.getElementById("s").onclick = () => { a.pause(); a.currentTime = 0; };
+  </script>
+</body>
+</html>
