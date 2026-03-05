@@ -13,32 +13,43 @@
 
 <script>
 
-async function load(){
-
-const r = await fetch("/api/score");
-const j = await r.json();
-
-if(!j.ok){
-document.getElementById("list").innerHTML="error";
-return;
+// country code (TR, US, DE) -> emoji flag
+function flagEmoji(cc){
+  if(!cc) return "🏳️";
+  const s = cc.toUpperCase();
+  const A = 0x1F1E6;
+  const code = c => A + (c.charCodeAt(0) - 65);
+  if(s.length !== 2) return "🏳️";
+  return String.fromCodePoint(code(s[0]), code(s[1]));
 }
 
-let html="";
+async function load(){
 
-j.top.forEach((u,i)=>{
+  const r = await fetch("/api/score");
+  const j = await r.json();
 
-let w=u.wallet.slice(0,6)+"..."+u.wallet.slice(-4);
+  if(!j.ok){
+    document.getElementById("list").innerHTML="error";
+    return;
+  }
 
-html+=`
-<div style="display:flex;justify-content:space-between;padding:6px 0">
-<div>#${i+1} ${w}</div>
-<div>${u.best_score}</div>
-</div>
-`;
+  let html="";
 
-});
+  j.top.forEach((u,i)=>{
 
-document.getElementById("list").innerHTML=html;
+    let w=u.wallet.slice(0,6)+"..."+u.wallet.slice(-4);
+    let flag = flagEmoji(u.country);
+
+    html+=`
+    <div style="display:flex;justify-content:space-between;padding:6px 0">
+      <div>#${i+1} ${flag} ${w}</div>
+      <div>${u.best_score}</div>
+    </div>
+    `;
+
+  });
+
+  document.getElementById("list").innerHTML=html;
 
 }
 
