@@ -32,5 +32,15 @@ function startRanked(){
 }
 </script>
 
+<script>
+  (function(){
+    try{
+      const p = new URLSearchParams(location.search);
+      const ref = p.get("ref");
+      if(ref) localStorage.setItem("neon99_ref", ref);
+    }catch(e){}
+  })();
+</script>  
+  
 </body>
 </html>
