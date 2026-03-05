@@ -395,3 +395,17 @@
   window.goRanked = goRanked;
   window.goBoard = goBoard;
 })();
+// ===== Home page buttons =====
+window.goFree = function () {
+  localStorage.setItem("neon99_mode", "free");
+  location.href = "/city.html";
+};
+
+window.goRanked = function () {
+  localStorage.setItem("neon99_mode", "ranked");
+  location.href = "/city.html";
+};
+
+window.goBoard = function () {
+  location.href = "/board.html";
+};
