@@ -1,178 +1,207 @@
 <!DOCTYPE html>
 <html>
+
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Select City</title>
+
 <style>
-  body{background:black;margin:0;font-family:monospace;color:white;text-align:center;}
-  h2{margin-top:20px;color:#00d4ff;}
-  #map{position:relative;max-width:900px;margin:auto;}
-  #map img{width:100%;display:block;}
 
-  .city{
-    position:absolute;
-    cursor:pointer;
-    text-align:center;
-    transform:translate(-50%,-50%);
-    user-select:none;
-  }
+body{
+background:black;
+margin:0;
+font-family:monospace;
+color:white;
+text-align:center;
+}
 
-  .pin{
-    width:40px;height:40px;border-radius:50%;
-    display:flex;align-items:center;justify-content:center;
-    border:1px solid rgba(0,212,255,.35);
-    background:rgba(0,0,0,.35);
-    box-shadow:0 0 10px rgba(0,212,255,.35);
-    animation:pulse 1.6s ease-in-out infinite;
-  }
+h2{
+margin-top:20px;
+color:#00d4ff;
+}
 
-  .pin img{width:28px;height:28px;border-radius:4px;display:block;}
+#map{
+position:relative;
+max-width:900px;
+margin:auto;
+}
 
-  .label{margin-top:4px;font-size:12px;color:white;text-shadow:0 0 6px rgba(0,0,0,.8);}
+#map img{
+width:100%;
+display:block;
+}
 
-  .locked{
-    opacity:.45;
-    filter:grayscale(1);
-  }
-  .locked .pin{
-    border-color:rgba(255,255,255,.18);
-    box-shadow:0 0 10px rgba(255,255,255,.08);
-    animation:none;
-  }
-  .lockBadge{
-    position:absolute;
-    top:-8px;right:-8px;
-    width:20px;height:20px;border-radius:50%;
-    background:rgba(0,0,0,.75);
-    border:1px solid rgba(255,255,255,.25);
-    display:flex;align-items:center;justify-content:center;
-    font-size:12px;
-  }
+.city{
+position:absolute;
+cursor:pointer;
+text-align:center;
+transform:translate(-50%,-50%);
+}
 
-  @keyframes pulse{
-    0%{transform:scale(1); box-shadow:0 0 10px rgba(0,212,255,.35);}
-    50%{transform:scale(1.08); box-shadow:0 0 22px rgba(0,212,255,.65);}
-    100%{transform:scale(1); box-shadow:0 0 10px rgba(0,212,255,.35);}
-  }
+.pin{
+width:40px;
+height:40px;
+border-radius:50%;
+display:flex;
+align-items:center;
+justify-content:center;
+border:1px solid rgba(0,212,255,.4);
+background:rgba(0,0,0,.3);
+box-shadow:0 0 10px rgba(0,212,255,.4);
+animation:pulse 1.5s infinite;
+}
 
-  .topbar{
-    max-width:900px;margin:10px auto 0;
-    display:flex;justify-content:space-between;align-items:center;
-    padding:0 10px;color:rgba(255,255,255,.75);font-size:12px;
-  }
-  .btn{
-    padding:10px 12px;border-radius:10px;
-    border:1px solid rgba(255,255,255,.25);
-    background:rgba(0,0,0,.35);color:#fff;
-  }
+.pin img{
+width:26px;
+height:26px;
+}
+
+.label{
+font-size:12px;
+margin-top:4px;
+}
+
+.locked{
+opacity:0.4;
+filter:grayscale(1);
+animation:none;
+}
+
+.lock{
+position:absolute;
+top:-8px;
+right:-8px;
+font-size:12px;
+}
+
+@keyframes pulse{
+0%{transform:scale(1)}
+50%{transform:scale(1.15)}
+100%{transform:scale(1)}
+}
+
+.zoom{
+transition:transform .6s;
+transform:translate(-50%,-50%) scale(2.5);
+z-index:1000;
+}
+
 </style>
+
 </head>
 
 <body>
+
 <h2>SELECT CITY</h2>
 
-<div class="topbar">
-  <div>Best: <b id="best">0</b></div>
-  <button class="btn" onclick="location.href='index.html'">HOME</button>
+<div id="map">
+
+<img src="worldmap.PNG">
+
+<div class="city" style="top:40%;left:20%" data-score="0" onclick="pickCity(this,'New York')">
+<div class="pin"><img src="flag_us.PNG"></div>
+<div class="label">New York</div>
 </div>
 
-<div id="map">
-  <img src="worldmap.PNG" alt="world map">
+<div class="city" style="top:45%;left:80%" data-score="10000" onclick="pickCity(this,'Tokyo')">
+<div class="pin"><img src="flag_jp.PNG"></div>
+<div class="label">Tokyo</div>
+</div>
 
-  <!-- New York -->
-  <div class="city" data-need="0" style="top:40%;left:20%" onclick="pickCity('New York')">
-    <div class="pin"><img src="flag_us.PNG" alt=""></div>
-    <div class="label">New York</div>
-  </div>
+<div class="city" style="top:42%;left:52%" data-score="25000" onclick="pickCity(this,'Berlin')">
+<div class="pin"><img src="flag_de.PNG"></div>
+<div class="label">Berlin</div>
+</div>
 
-  <!-- Tokyo -->
-  <div class="city" data-need="10000" style="top:45%;left:80%" onclick="pickCity('Tokyo')">
-    <div class="pin"><img src="flag_jp.PNG" alt=""></div>
-    <div class="label">Tokyo</div>
-  </div>
+<div class="city" style="top:60%;left:30%" data-score="50000" onclick="pickCity(this,'Rio')">
+<div class="pin"><img src="flag_br.PNG"></div>
+<div class="label">Rio</div>
+</div>
 
-  <!-- Berlin -->
-  <div class="city" data-need="25000" style="top:42%;left:52%" onclick="pickCity('Berlin')">
-    <div class="pin"><img src="flag_de.PNG" alt=""></div>
-    <div class="label">Berlin</div>
-  </div>
+<div class="city" style="top:50%;left:75%" data-score="80000" onclick="pickCity(this,'Seoul')">
+<div class="pin"><img src="flag_kr.PNG"></div>
+<div class="label">Seoul</div>
+</div>
 
-  <!-- Rio -->
-  <div class="city" data-need="50000" style="top:60%;left:30%" onclick="pickCity('Rio')">
-    <div class="pin"><img src="flag_br.PNG" alt=""></div>
-    <div class="label">Rio</div>
-  </div>
+<div class="city" style="top:38%;left:48%" data-score="120000" onclick="pickCity(this,'London')">
+<div class="pin"><img src="flag_gb.PNG"></div>
+<div class="label">London</div>
+</div>
 
-  <!-- Seoul -->
-  <div class="city" data-need="80000" style="top:50%;left:75%" onclick="pickCity('Seoul')">
-    <div class="pin"><img src="flag_kr.PNG" alt=""></div>
-    <div class="label">Seoul</div>
-  </div>
+<div class="city" style="top:45%;left:50%" data-score="170000" onclick="pickCity(this,'Paris')">
+<div class="pin"><img src="flag_fr.PNG"></div>
+<div class="label">Paris</div>
+</div>
 
-  <!-- London -->
-  <div class="city" data-need="120000" style="top:38%;left:48%" onclick="pickCity('London')">
-    <div class="pin"><img src="flag_gb.PNG" alt=""></div>
-    <div class="label">London</div>
-  </div>
+<div class="city" style="top:48%;left:60%" data-score="230000" onclick="pickCity(this,'Dubai')">
+<div class="pin"><img src="flag_ae.PNG"></div>
+<div class="label">Dubai</div>
+</div>
 
-  <!-- Paris -->
-  <div class="city" data-need="170000" style="top:45%;left:50%" onclick="pickCity('Paris')">
-    <div class="pin"><img src="flag_fr.PNG" alt=""></div>
-    <div class="label">Paris</div>
-  </div>
+<div class="city" style="top:55%;left:70%" data-score="300000" onclick="pickCity(this,'Singapore')">
+<div class="pin"><img src="flag_sg.PNG"></div>
+<div class="label">Singapore</div>
+</div>
 
-  <!-- Dubai -->
-  <div class="city" data-need="230000" style="top:48%;left:60%" onclick="pickCity('Dubai')">
-    <div class="pin"><img src="flag_ae.PNG" alt=""></div>
-    <div class="label">Dubai</div>
-  </div>
-
-  <!-- Singapore -->
-  <div class="city" data-need="300000" style="top:55%;left:70%" onclick="pickCity('Singapore')">
-    <div class="pin"><img src="flag_sg.PNG" alt=""></div>
-    <div class="label">Singapore</div>
-  </div>
-
-  <!-- Istanbul -->
-  <div class="city" data-need="380000" style="top:45%;left:55%" onclick="pickCity('Istanbul')">
-    <div class="pin"><img src="flag_tr.PNG" alt=""></div>
-    <div class="label">Istanbul</div>
-  </div>
+<div class="city" style="top:45%;left:55%" data-score="380000" onclick="pickCity(this,'Istanbul')">
+<div class="pin"><img src="flag_tr.PNG"></div>
+<div class="label">Istanbul</div>
+</div>
 
 </div>
 
 <script src="game.js"></script>
+
 <script>
-  function loadBest(){
-    try{ return parseInt(localStorage.getItem("neon99_best")||"0",10) }catch(e){ return 0 }
-  }
 
-  const best = loadBest();
-  document.getElementById("best").textContent = best;
+function loadBest(){
+return parseInt(localStorage.getItem("neon99_best")||0)
+}
 
-  // lock visuals based on best score
-  document.querySelectorAll(".city").forEach(el=>{
-    const need = parseInt(el.getAttribute("data-need")||"0",10);
-    if(best < need){
-      el.classList.add("locked");
-      const b = document.createElement("div");
-      b.className = "lockBadge";
-      b.textContent = "🔒";
-      el.appendChild(b);
-    }
-  });
+let best = loadBest()
 
-  // when locked, show need; else call game.js city()
-  window.pickCity = function(name){
-    const el = [...document.querySelectorAll(".city")].find(x=>x.querySelector(".label")?.textContent===name);
-    const need = el ? parseInt(el.getAttribute("data-need")||"0",10) : 0;
-    if(best < need){
-      alert("LOCKED\nNeed score: " + need);
-      return;
-    }
-    // calls window.city() from game.js
-    city(name);
-  }
+document.querySelectorAll(".city").forEach(c=>{
+
+let need=parseInt(c.dataset.score)
+
+if(best < need){
+
+c.classList.add("locked")
+
+let l=document.createElement("div")
+l.className="lock"
+l.innerHTML="🔒"
+
+c.appendChild(l)
+
+}
+
+})
+
+function pickCity(el,name){
+
+let need=parseInt(el.dataset.score)
+
+if(best < need){
+
+alert("LOCKED\nNeed score: "+need)
+
+return
+
+}
+
+el.classList.add("zoom")
+
+setTimeout(()=>{
+
+city(name)
+
+},600)
+
+}
+
 </script>
+
 </body>
+
 </html>
