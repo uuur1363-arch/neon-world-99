@@ -1,126 +1,178 @@
 <!DOCTYPE html>
 <html>
-
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Select City</title>
-
 <style>
+  body{background:black;margin:0;font-family:monospace;color:white;text-align:center;}
+  h2{margin-top:20px;color:#00d4ff;}
+  #map{position:relative;max-width:900px;margin:auto;}
+  #map img{width:100%;display:block;}
 
-body{
-background:black;
-margin:0;
-font-family:monospace;
-color:white;
-text-align:center;
-}
+  .city{
+    position:absolute;
+    cursor:pointer;
+    text-align:center;
+    transform:translate(-50%,-50%);
+    user-select:none;
+  }
 
-h2{
-margin-top:20px;
-color:#00d4ff;
-}
+  .pin{
+    width:40px;height:40px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    border:1px solid rgba(0,212,255,.35);
+    background:rgba(0,0,0,.35);
+    box-shadow:0 0 10px rgba(0,212,255,.35);
+    animation:pulse 1.6s ease-in-out infinite;
+  }
 
-#map{
-position:relative;
-max-width:900px;
-margin:auto;
-}
+  .pin img{width:28px;height:28px;border-radius:4px;display:block;}
 
-#map img{
-width:100%;
-}
+  .label{margin-top:4px;font-size:12px;color:white;text-shadow:0 0 6px rgba(0,0,0,.8);}
 
-.city{
-position:absolute;
-cursor:pointer;
-text-align:center;
-}
+  .locked{
+    opacity:.45;
+    filter:grayscale(1);
+  }
+  .locked .pin{
+    border-color:rgba(255,255,255,.18);
+    box-shadow:0 0 10px rgba(255,255,255,.08);
+    animation:none;
+  }
+  .lockBadge{
+    position:absolute;
+    top:-8px;right:-8px;
+    width:20px;height:20px;border-radius:50%;
+    background:rgba(0,0,0,.75);
+    border:1px solid rgba(255,255,255,.25);
+    display:flex;align-items:center;justify-content:center;
+    font-size:12px;
+  }
 
-.city img{
-width:32px;
-display:block;
-margin:auto;
-}
+  @keyframes pulse{
+    0%{transform:scale(1); box-shadow:0 0 10px rgba(0,212,255,.35);}
+    50%{transform:scale(1.08); box-shadow:0 0 22px rgba(0,212,255,.65);}
+    100%{transform:scale(1); box-shadow:0 0 10px rgba(0,212,255,.35);}
+  }
 
-.city span{
-font-size:12px;
-color:white;
-}
-
+  .topbar{
+    max-width:900px;margin:10px auto 0;
+    display:flex;justify-content:space-between;align-items:center;
+    padding:0 10px;color:rgba(255,255,255,.75);font-size:12px;
+  }
+  .btn{
+    padding:10px 12px;border-radius:10px;
+    border:1px solid rgba(255,255,255,.25);
+    background:rgba(0,0,0,.35);color:#fff;
+  }
 </style>
 </head>
 
 <body>
-
 <h2>SELECT CITY</h2>
 
+<div class="topbar">
+  <div>Best: <b id="best">0</b></div>
+  <button class="btn" onclick="location.href='index.html'">HOME</button>
+</div>
+
 <div id="map">
+  <img src="worldmap.PNG" alt="world map">
 
-<img src="worldmap.PNG">
+  <!-- New York -->
+  <div class="city" data-need="0" style="top:40%;left:20%" onclick="pickCity('New York')">
+    <div class="pin"><img src="flag_us.PNG" alt=""></div>
+    <div class="label">New York</div>
+  </div>
 
-<!-- USA -->
-<div class="city" style="top:40%;left:20%" onclick="city('New York')">
-<img src="flag_us.PNG">
-<span>New York</span>
-</div>
+  <!-- Tokyo -->
+  <div class="city" data-need="10000" style="top:45%;left:80%" onclick="pickCity('Tokyo')">
+    <div class="pin"><img src="flag_jp.PNG" alt=""></div>
+    <div class="label">Tokyo</div>
+  </div>
 
-<!-- JAPAN -->
-<div class="city" style="top:45%;left:80%" onclick="city('Tokyo')">
-<img src="flag_jp.PNG">
-<span>Tokyo</span>
-</div>
+  <!-- Berlin -->
+  <div class="city" data-need="25000" style="top:42%;left:52%" onclick="pickCity('Berlin')">
+    <div class="pin"><img src="flag_de.PNG" alt=""></div>
+    <div class="label">Berlin</div>
+  </div>
 
-<!-- GERMANY -->
-<div class="city" style="top:42%;left:52%" onclick="city('Berlin')">
-<img src="flag_de.PNG">
-<span>Berlin</span>
-</div>
+  <!-- Rio -->
+  <div class="city" data-need="50000" style="top:60%;left:30%" onclick="pickCity('Rio')">
+    <div class="pin"><img src="flag_br.PNG" alt=""></div>
+    <div class="label">Rio</div>
+  </div>
 
-<!-- BRAZIL -->
-<div class="city" style="top:60%;left:30%" onclick="city('Rio')">
-<img src="flag_br.PNG">
-<span>Rio</span>
-</div>
+  <!-- Seoul -->
+  <div class="city" data-need="80000" style="top:50%;left:75%" onclick="pickCity('Seoul')">
+    <div class="pin"><img src="flag_kr.PNG" alt=""></div>
+    <div class="label">Seoul</div>
+  </div>
 
-<!-- SOUTH KOREA -->
-<div class="city" style="top:50%;left:75%" onclick="city('Seoul')">
-<img src="flag_kr.PNG">
-<span>Seoul</span>
-</div>
+  <!-- London -->
+  <div class="city" data-need="120000" style="top:38%;left:48%" onclick="pickCity('London')">
+    <div class="pin"><img src="flag_gb.PNG" alt=""></div>
+    <div class="label">London</div>
+  </div>
 
-<!-- UK -->
-<div class="city" style="top:38%;left:48%" onclick="city('London')">
-<img src="flag_gb.PNG">
-<span>London</span>
-</div>
+  <!-- Paris -->
+  <div class="city" data-need="170000" style="top:45%;left:50%" onclick="pickCity('Paris')">
+    <div class="pin"><img src="flag_fr.PNG" alt=""></div>
+    <div class="label">Paris</div>
+  </div>
 
-<!-- FRANCE -->
-<div class="city" style="top:45%;left:50%" onclick="city('Paris')">
-<img src="flag_fr.PNG">
-<span>Paris</span>
-</div>
+  <!-- Dubai -->
+  <div class="city" data-need="230000" style="top:48%;left:60%" onclick="pickCity('Dubai')">
+    <div class="pin"><img src="flag_ae.PNG" alt=""></div>
+    <div class="label">Dubai</div>
+  </div>
 
-<!-- UAE -->
-<div class="city" style="top:48%;left:60%" onclick="city('Dubai')">
-<img src="flag_ae.PNG">
-<span>Dubai</span>
-</div>
+  <!-- Singapore -->
+  <div class="city" data-need="300000" style="top:55%;left:70%" onclick="pickCity('Singapore')">
+    <div class="pin"><img src="flag_sg.PNG" alt=""></div>
+    <div class="label">Singapore</div>
+  </div>
 
-<!-- SINGAPORE -->
-<div class="city" style="top:55%;left:70%" onclick="city('Singapore')">
-<img src="flag_sg.PNG">
-<span>Singapore</span>
-</div>
-
-<!-- TURKEY -->
-<div class="city" style="top:45%;left:55%" onclick="city('Istanbul')">
-<img src="flag_tr.PNG">
-<span>Istanbul</span>
-</div>
+  <!-- Istanbul -->
+  <div class="city" data-need="380000" style="top:45%;left:55%" onclick="pickCity('Istanbul')">
+    <div class="pin"><img src="flag_tr.PNG" alt=""></div>
+    <div class="label">Istanbul</div>
+  </div>
 
 </div>
 
 <script src="game.js"></script>
+<script>
+  function loadBest(){
+    try{ return parseInt(localStorage.getItem("neon99_best")||"0",10) }catch(e){ return 0 }
+  }
 
+  const best = loadBest();
+  document.getElementById("best").textContent = best;
+
+  // lock visuals based on best score
+  document.querySelectorAll(".city").forEach(el=>{
+    const need = parseInt(el.getAttribute("data-need")||"0",10);
+    if(best < need){
+      el.classList.add("locked");
+      const b = document.createElement("div");
+      b.className = "lockBadge";
+      b.textContent = "🔒";
+      el.appendChild(b);
+    }
+  });
+
+  // when locked, show need; else call game.js city()
+  window.pickCity = function(name){
+    const el = [...document.querySelectorAll(".city")].find(x=>x.querySelector(".label")?.textContent===name);
+    const need = el ? parseInt(el.getAttribute("data-need")||"0",10) : 0;
+    if(best < need){
+      alert("LOCKED\nNeed score: " + need);
+      return;
+    }
+    // calls window.city() from game.js
+    city(name);
+  }
+</script>
 </body>
 </html>
