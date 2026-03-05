@@ -275,7 +275,12 @@ function runMiniGame() {
       fetch("/api/submit-score", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ wallet, score: Number(finalScore), city: currentCity, country })
+        body: JSON.stringify({
+  wallet,
+  score: Number(finalScore),
+  city: currentCity,
+  country: localStorage.getItem("neon99_country") || "TR"
+})
       }).catch(()=>{});
     } catch(e){}
 
