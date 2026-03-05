@@ -1,11 +1,3 @@
-const mode = localStorage.getItem("neon99_mode") || "free";
-if (mode === "ranked") {
-  const pu = parseInt(localStorage.getItem("neon99_pass_until") || "0", 10);
-  if (Date.now() > pu) {
-    alert("RANKED locked. Connect + Pay 0.01 SOL first.");
-    return;
-  }
-}
 // NEON WORLD '99 — Mobile Web MVP (Demo)
 // City select -> 60s mini game -> score -> unlock cities
 // BEST SCORE is saved in localStorage
@@ -39,12 +31,25 @@ const unlock = [
   { name: "Seoul", need: 80000 },
 ];
 
-// This function is called from index.html buttons: onclick="city('Tokyo')"
+// This function is called from city.html buttons: onclick="city('Tokyo')"
 function city(name) {
+  // ✅ ranked lock must be here (NOT at top of file)
+  const mode = localStorage.getItem("neon99_mode") || "free";
+  if (mode === "ranked") {
+    const pu = parseInt(localStorage.getItem("neon99_pass_until") || "0", 10);
+    if (Date.now() > pu) {
+      alert("RANKED locked. Connect + Pay 0.01 SOL first.");
+      return;
+    }
+  }
 
-  const cityData = unlock.find(c => c.name === name);
+  const cityData = unlock.find((c) => c.name === name);
+  if (!cityData) {
+    alert("Unknown city");
+    return;
+  }
 
-  if(bestScore < cityData.need){
+  if (bestScore < cityData.need) {
     alert("LOCKED\nYou need " + cityData.need + " score");
     return;
   }
@@ -232,32 +237,26 @@ function runMiniGame() {
   function end(finalScore) {
     bestScore = Math.max(bestScore, finalScore);
     saveBest(bestScore);
-    // --- submit score (ranked only) ---
-try {
-  const mode = localStorage.getItem("neon99_mode") || "free";
-  if (mode === "ranked") {
-    const wallet = localStorage.getItem("neon99_wallet") || "";
-    if (wallet) {
-      fetch("/api/submit-score", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ wallet, score: Number(score) })
-      }).catch(()=>{});
-    }
-  }
-} catch(e) {}
-// if ranked, submit score
-try {
-  const mode = localStorage.getItem("neon99_mode") || "free";
-  if (mode === "ranked") {
-    const wallet = localStorage.getItem("neon99_wallet") || "";
-    fetch("/api/submit-score", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ wallet, score: finalScore, city: currentCity })
-    }).catch(()=>{});
-  }
-} catch(e) {}
+
+    // ✅ submit score ONLY ONCE (ranked only)
+    try {
+      const modeNow = localStorage.getItem("neon99_mode") || "free";
+      if (modeNow === "ranked") {
+        const wallet = localStorage.getItem("neon99_wallet") || "";
+        if (wallet) {
+          fetch("/api/submit-score", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              wallet,
+              score: Number(finalScore),
+              city: currentCity,
+            }),
+          }).catch(() => {});
+        }
+      }
+    } catch (e) {}
+
     const unlocked = unlock.filter((u) => bestScore >= u.need).map((u) => u.name);
 
     alert(`SCORE: ${finalScore}\nBEST: ${bestScore}\nUNLOCKED: ${unlocked.join(", ")}`);
@@ -320,35 +319,31 @@ function escapeHtml(s) {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m];
   });
 }
-function freeMode(){
 
-alert("FREE MODE");
-
-location.reload()
-
-}
-
-function rankedMode(){
-
-alert("RANKED MODE\nEntry: 0.01 SOL")
-
-}
-
-function leaderboard(){
-
-alert("GLOBAL LEADERBOARD\nComing soon")
-
-}
-function goFree(){
-  localStorage.setItem("neon99_mode","free");
+// ---- UI navigation helpers (called from buttons in html) ----
+function goFree() {
+  localStorage.setItem("neon99_mode", "free");
   location.href = "/city.html";
 }
 
-function goRanked(){
-  localStorage.setItem("neon99_mode","ranked");
+function goRanked() {
+  localStorage.setItem("neon99_mode", "ranked");
   location.href = "/city.html";
 }
 
-function goBoard(){
+function goBoard() {
+  location.href = "/board.html";
+}
+
+// (legacy unused funcs — you can delete later)
+function freeMode() {
+  alert("FREE MODE");
+  location.reload();
+}
+function rankedMode() {
+  alert("RANKED MODE\nEntry: 0.01 SOL");
+}
+function leaderboard() {
+  // instead of alert, go to board
   location.href = "/board.html";
 }
