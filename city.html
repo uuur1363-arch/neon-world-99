@@ -1,168 +1,103 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <title>NEON WORLD '99 — City</title>
-  <link rel="stylesheet" href="styles.css">
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Choose City</title>
+
+<style>
+
+body{
+background:black;
+margin:0;
+font-family:monospace;
+color:white;
+text-align:center;
+}
+
+#map{
+position:relative;
+max-width:900px;
+margin:auto;
+}
+
+#map img{
+width:100%;
+}
+
+.city{
+position:absolute;
+cursor:pointer;
+text-align:center;
+}
+
+.city img{
+width:32px;
+display:block;
+margin:auto;
+}
+
+.city span{
+font-size:12px;
+}
+
+</style>
+
 </head>
+
 <body>
-  <div id="crt"></div>
 
-  <div class="screen">
-    <div class="logo">
-      <div class="title">NEON WORLD '99</div>
-      <div class="tagline" id="modeLine">MODE: ...</div>
-    </div>
+<h2>SELECT CITY</h2>
 
-    <div class="panel">
+<div id="map">
 
-      <div id="rankedGate" style="display:none;">
-        <div class="muted small" id="rgStatus">RANKED requires payment.</div>
-        <div style="height:10px"></div>
+<img src="worldmap.png">
 
-        <button class="btn" id="btnOpenPhantom" style="display:none;">OPEN IN PHANTOM</button>
-        <div style="height:10px"></div>
+<div class="city" style="top:40%;left:20%" onclick="city('New York')">
+<img src="flag_us.png"><span>New York</span>
+</div>
 
-        <button class="btn" id="btnConnect">CONNECT WALLET</button>
-        <div style="height:10px"></div>
+<div class="city" style="top:45%;left:80%" onclick="city('Tokyo')">
+<img src="flag_jp.png"><span>Tokyo</span>
+</div>
 
-        <button class="btn" id="btnPay" disabled>PAY 0.01 SOL</button>
-        <div style="height:10px"></div>
+<div class="city" style="top:42%;left:52%" onclick="city('Berlin')">
+<img src="flag_de.png"><span>Berlin</span>
+</div>
 
-        <div class="muted small" id="rgWallet"></div>
-        <div class="muted small" id="rgPass"></div>
-        <div class="hr"></div>
-      </div>
+<div class="city" style="top:60%;left:30%" onclick="city('Rio')">
+<img src="flag_br.png"><span>Rio</span>
+</div>
 
-      <h2>Select City</h2>
+<div class="city" style="top:50%;left:75%" onclick="city('Seoul')">
+<img src="flag_kr.png"><span>Seoul</span>
+</div>
 
-      <button onclick="city('New York')">NEW YORK</button><br><br>
-      <button onclick="city('Tokyo')">TOKYO</button><br><br>
-      <button onclick="city('Berlin')">BERLIN</button><br><br>
-      <button onclick="city('Rio')">RIO</button><br><br>
-      <button onclick="city('Seoul')">SEOUL</button>
+<div class="city" style="top:38%;left:48%" onclick="city('London')">
+<img src="flag_gb.png"><span>London</span>
+</div>
 
-      <div style="height:14px"></div>
-      <button class="btn btn-ghost" onclick="location.href='/'">BACK</button>
-    </div>
-  </div>
+<div class="city" style="top:45%;left:50%" onclick="city('Paris')">
+<img src="flag_fr.png"><span>Paris</span>
+</div>
 
-  <!-- Solana web3 -->
-  <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
+<div class="city" style="top:48%;left:60%" onclick="city('Dubai')">
+<img src="flag_ae.png"><span>Dubai</span>
+</div>
 
-  <script>
-    const mode = localStorage.getItem("neon99_mode") || "free";
-    document.getElementById("modeLine").textContent =
-      "MODE: " + (mode === "ranked" ? "RANKED (0.01 SOL)" : "FREE PLAY");
+<div class="city" style="top:55%;left:70%" onclick="city('Singapore')">
+<img src="flag_sg.png"><span>Singapore</span>
+</div>
 
-    const gate = document.getElementById("rankedGate");
-    const statusEl = document.getElementById("rgStatus");
-    const walletEl = document.getElementById("rgWallet");
-    const passEl = document.getElementById("rgPass");
-    const btnOpen = document.getElementById("btnOpenPhantom");
-    const btnConnect = document.getElementById("btnConnect");
-    const btnPay = document.getElementById("btnPay");
+<div class="city" style="top:75%;left:85%" onclick="city('Sydney')">
+<img src="flag_au.png"><span>Sydney</span>
+</div>
 
-    if (mode === "ranked") gate.style.display = "block";
+</div>
 
-    function openInPhantom() {
-      const url = encodeURIComponent(location.href);
-      location.href = "https://phantom.app/ul/browse/" + url;
-    }
+<script src="game.js"></script>
 
-    if (!window.solana || !window.solana.isPhantom) {
-      btnOpen.style.display = "block";
-      btnOpen.onclick = openInPhantom;
-    }
-
-    let walletPubkey = null;
-
-    async function connectWallet() {
-      if (!window.solana) {
-        statusEl.textContent = "Phantom not found. Tap OPEN IN PHANTOM.";
-        return;
-      }
-      const resp = await window.solana.connect();
-      walletPubkey = resp.publicKey.toString();
-      localStorage.setItem("neon99_wallet", walletPubkey);
-
-      walletEl.textContent = "WALLET: " + walletPubkey.slice(0, 6) + "..." + walletPubkey.slice(-4);
-      statusEl.textContent = "Connected. Checking pass...";
-      await refreshPass();
-      btnPay.disabled = false;
-    }
-
-    async function refreshPass(){
-      if (!walletPubkey) return;
-      const r = await fetch("/api/me?wallet=" + encodeURIComponent(walletPubkey));
-      const j = await r.json();
-      if (j.ok && j.pass) {
-        localStorage.setItem("neon99_pass_until", String(j.pass_until));
-        passEl.textContent = "PASS: active (24h)";
-        statusEl.textContent = "Ranked unlocked!";
-      } else {
-        passEl.textContent = "PASS: not active";
-        statusEl.textContent = "Pay 0.01 SOL to unlock ranked (24h).";
-      }
-    }
-
-    btnConnect.onclick = () => connectWallet().catch(e => {
-      statusEl.textContent = "Connect error: " + (e.message || e);
-    });
-
-    function randomMemo() {
-      return "NEON99|" + Date.now() + "|" + Math.random().toString(16).slice(2);
-    }
-
-    async function payRanked() {
-      if (!walletPubkey) return;
-
-      const memo = randomMemo();
-
-      const treasury = new solanaWeb3.PublicKey("8UH2aQubZ5kjR5PpesoPio4zkAfafoMY5hHuKrPYz6ct");
-      const from = new solanaWeb3.PublicKey(walletPubkey);
-
-      const lamports = Math.round(0.01 * 1e9);
-
-      const tx = new solanaWeb3.Transaction();
-      tx.add(solanaWeb3.SystemProgram.transfer({
-        fromPubkey: from,
-        toPubkey: treasury,
-        lamports
-      }));
-
-      // Memo
-      const memoProgramId = new solanaWeb3.PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr");
-      tx.add({ keys: [], programId: memoProgramId, data: new TextEncoder().encode(memo) });
-
-      tx.feePayer = from;
-
-      const conn = new solanaWeb3.Connection(solanaWeb3.clusterApiUrl("mainnet-beta"), "confirmed");
-      const { blockhash } = await conn.getLatestBlockhash("confirmed");
-      tx.recentBlockhash = blockhash;
-
-      statusEl.textContent = "Sending transaction...";
-      const { signature } = await window.solana.signAndSendTransaction(tx);
-
-      statusEl.textContent = "Verifying payment...";
-      const r = await fetch("/api/verify-payment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ wallet: walletPubkey, signature, memo })
-      });
-      const j = await r.json();
-      if (!j.ok) throw new Error(j.error || "verify failed");
-
-      localStorage.setItem("neon99_pass_until", String(j.pass_until));
-      passEl.textContent = "PASS: active (24h)";
-      statusEl.textContent = "Payment verified. Ranked unlocked!";
-    }
-
-    btnPay.onclick = () => payRanked().catch(e => {
-      statusEl.textContent = "Pay error: " + (e.message || e);
-    });
-  </script>
-
-  <script src="game.js"></script>
 </body>
 </html>
