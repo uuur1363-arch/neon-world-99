@@ -1,3 +1,10 @@
+// ---------- MUSIC ----------
+let bgm = new Audio("/audio/bgm.mp3");
+bgm.loop = true;
+bgm.volume = 0.4;
+
+let hitSound = new Audio("/audio/hit.mp3");
+let missSound = new Audio("/audio/miss.mp3");
 // NEON WORLD '99 — Mobile Web MVP (Demo)
 // City select -> 60s mini game -> score -> unlock cities
 // BEST SCORE is saved in localStorage
