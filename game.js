@@ -1,3 +1,29 @@
+// MUSIC SYSTEM
+let bgm = new Audio("/bgm_ny.mp3");
+bgm.loop = true;
+bgm.volume = 0.35;
+let musicStarted = false;
+
+function startMusic() {
+  if (musicStarted) return;
+
+  if (currentCity === "Tokyo") {
+    bgm.src = "/bgm_tokyo.mp3";
+  } else if (currentCity === "Berlin") {
+    bgm.src = "/bgm_berlin.mp3";
+  } else {
+    bgm.src = "/bgm_ny.mp3";
+  }
+
+  bgm.play().catch(()=>{});
+  musicStarted = true;
+}
+
+function stopMusic() {
+  bgm.pause();
+  bgm.currentTime = 0;
+  musicStarted = false;
+}
 // NEON WORLD '99 — CLEAN BUILD (Remote City Music + Leaderboard)
 // Works on mobile: music starts on first user gesture (tap)
 
