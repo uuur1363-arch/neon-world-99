@@ -5,7 +5,7 @@ export default async function handler(req, res) {
     const db = supa();
     const { data, error } = await db
       .from("users")
-      .select("wallet,best_score")
+      .select("wallet,best_score,country")
       .order("best_score", { ascending: false })
       .limit(20);
 
