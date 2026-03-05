@@ -1,13 +1,10 @@
-const sHit = new Audio("/hit.mp3");
-const sMiss = new Audio("/miss.mp3");
-const sCombo = new Audio("/combo.mp3");
-// NEON WORLD '99 — CLEAN SINGLE FILE (City Music + City Background + Game + Submit Score)
-// REQUIRED in root: bgm_ny.mp3, bgm_tokyo.mp3, bgm_berlin.mp3
-// OPTIONAL in root: bg_ny.jpg, bg_tokyo.jpg, bg_berlin.jpg
+// NEON WORLD '99 — CLEAN GAME.JS (Stable)
+// Music (city-based), Background (city-based), SFX (hit/miss/combo), Unlocks, Submit Score
 
 // ---------------- CONFIG ----------------
 const GAME_SECONDS = 60;
 
+// Unlock thresholds (edit whenever you want)
 const UNLOCKS = [
   { name: "New York", need: 0 },
   { name: "Tokyo", need: 10000 },
@@ -40,68 +37,80 @@ function getCountry() {
   return localStorage.getItem("neon99_country") || "TR";
 }
 
-// ---------------- STATE ----------------
+// ---------------- GLOBAL STATE ----------------
 let currentCity = "New York";
 let bestScore = loadBest();
 
-// ---------------- MUSIC + BACKGROUND ----------------
-let audio = null;
-let audioStarted = false;
+// ---------------- SFX ----------------
+const sHit = new Audio("/hit.mp3");
+const sMiss = new Audio("/miss.mp3");
+const sCombo = new Audio("/combo.mp3");
+
+function playSfx(a) {
+  try {
+    a.currentTime = 0;
+    const p = a.play();
+    if (p && p.catch) p.catch(() => {});
+  } catch {}
+}
+
+// ---------------- MUSIC ----------------
+let bgm = null;
+let bgmStarted = false;
 
 function musicForCity(city) {
   if (city === "Tokyo") return "/bgm_tokyo.mp3";
   if (city === "Berlin") return "/bgm_berlin.mp3";
+  // For now other cities use NY music (later we can add more tracks)
   return "/bgm_ny.mp3";
 }
 
+function startMusicGesture() {
+  if (bgmStarted) return;
+  try {
+    stopMusic();
+    bgm = new Audio(musicForCity(currentCity));
+    bgm.loop = true;
+    bgm.volume = 0.4;
+    const p = bgm.play();
+    bgmStarted = true;
+    if (p && p.catch) p.catch(() => { bgmStarted = false; });
+  } catch {
+    bgmStarted = false;
+  }
+}
+
+function stopMusic() {
+  try {
+    if (bgm) {
+      bgm.pause();
+      bgm.currentTime = 0;
+      bgm = null;
+    }
+  } catch {}
+  bgmStarted = false;
+}
+
+function armMusicOnFirstTap() {
+  const once = () => startMusicGesture();
+  document.addEventListener("click", once, { once: true });
+  document.addEventListener("touchstart", once, { once: true, passive: true });
+}
+
+// ---------------- BACKGROUND ----------------
 function bgForCity(city) {
   if (city === "Tokyo") return "/bg_tokyo.jpg";
   if (city === "Berlin") return "/bg_berlin.jpg";
+  // For now other cities use NY background (later add more)
   return "/bg_ny.jpg";
 }
 
 function applyBackground(city) {
-  // If image doesn't exist, it will just stay black.
-  const url = bgForCity(city);
   document.body.style.backgroundColor = "#000";
-  document.body.style.backgroundImage = `url("${url}")`;
+  document.body.style.backgroundImage = `url("${bgForCity(city)}")`;
   document.body.style.backgroundSize = "cover";
   document.body.style.backgroundPosition = "center";
   document.body.style.backgroundRepeat = "no-repeat";
-}
-
-function stopCityMusic() {
-  try {
-    if (audio) {
-      audio.pause();
-      audio.currentTime = 0;
-      audio = null;
-    }
-  } catch {}
-  audioStarted = false;
-}
-
-// Must be called inside user gesture on mobile
-function startCityMusicGesture() {
-  if (audioStarted) return;
-  try {
-    stopCityMusic();
-    audio = new Audio(musicForCity(currentCity));
-    audio.loop = true;
-    audio.volume = 0.4;
-    const p = audio.play();
-    audioStarted = true;
-    if (p && p.catch) p.catch(() => { audioStarted = false; });
-  } catch {
-    audioStarted = false;
-  }
-}
-
-function armMusicOnFirstTap() {
-  // works on iOS: user taps once anywhere
-  const once = () => startCityMusicGesture();
-  document.addEventListener("click", once, { once: true });
-  document.addEventListener("touchstart", once, { once: true, passive: true });
 }
 
 // ---------------- RANKED LOCK ----------------
@@ -111,7 +120,7 @@ function rankedLocked() {
   return Date.now() > pu;
 }
 
-// ---------------- NAV HELPERS ----------------
+// ---------------- NAV HELPERS (buttons in index.html) ----------------
 window.goFree = function () {
   localStorage.setItem("neon99_mode", "free");
   location.href = "/city.html";
@@ -134,17 +143,18 @@ window.city = function (name) {
   }
 
   const cityData = UNLOCKS.find(c => c.name === name);
-  if (!cityData) { alert("Unknown city"); return; }
+  if (!cityData) {
+    alert("Unknown city: " + name);
+    return;
+  }
 
   if (bestScore < cityData.need) {
     alert("LOCKED\nYou need " + cityData.need + " score");
     return;
   }
 
-  // stop any previous audio & set new city
-  stopCityMusic();
+  stopMusic();
   currentCity = name;
-
   startGame();
 };
 
@@ -190,14 +200,13 @@ function startGame() {
   `;
 
   document.getElementById("exit").onclick = () => {
-    stopCityMusic();
+    stopMusic();
     location.href = "/city.html";
   };
 
-  // Guaranteed user-gesture play
-  document.getElementById("playMusic").onclick = startCityMusicGesture;
+  document.getElementById("playMusic").onclick = startMusicGesture;
 
-  // Also arm music on first tap anywhere
+  // also start music on first tap anywhere
   armMusicOnFirstTap();
 
   runMiniGame();
@@ -257,29 +266,27 @@ function runMiniGame() {
   function flash(s) { msg = s; msgT = 0.8; }
 
   function onTap() {
-    // also try start music on tap (safe)
-    startCityMusicGesture();
+    // safe: try start music on tap
+    startMusicGesture();
 
     const hitY = H * 0.78;
     const idx = notes.findIndex((n) => Math.abs(n.y - hitY) < 18);
+
     if (idx >= 0) {
       notes.splice(idx, 1);
       combo++;
       score += 200 + combo * 10;
       flash("PERFECT");
-      sHit.currentTime = 0;
-sHit.play().catch(()=>{});
 
-if(combo % 10 === 0){
-  sCombo.currentTime = 0;
-  sCombo.play().catch(()=>{});
-}
+      playSfx(sHit);
+      if (combo % 10 === 0) playSfx(sCombo);
+
     } else {
       combo = Math.max(0, combo - 2);
       score = Math.max(0, score - 80);
       flash("MISS");
-      sMiss.currentTime = 0;
-sMiss.play().catch(()=>{});
+
+      playSfx(sMiss);
     }
   }
 
@@ -333,7 +340,7 @@ sMiss.play().catch(()=>{});
   requestAnimationFrame(loop);
 
   function end(finalScore) {
-    stopCityMusic();
+    stopMusic();
 
     bestScore = Math.max(bestScore, finalScore);
     saveBest(bestScore);
@@ -344,17 +351,15 @@ sMiss.play().catch(()=>{});
       const wallet =
         (modeNow === "ranked" ? (localStorage.getItem("neon99_wallet") || "") : "") || "guest";
 
-fetch("/api/submit-score", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    wallet,
-    score: Number(finalScore),
-    city: currentCity,
-    country: getCountry(),
-    ref: localStorage.getItem("neon99_ref") || ""
-  })
-})
+      fetch("/api/submit-score", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          wallet,
+          score: Number(finalScore),
+          city: currentCity,
+          country: getCountry()
+        })
       }).catch(() => {});
     } catch {}
 
