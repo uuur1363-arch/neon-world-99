@@ -108,6 +108,11 @@ function backToCities() {
 function runMiniGame() {
   bgm.play().catch(()=>{});
   const cv = document.getElementById("cv");
+  cv.addEventListener("click", () => {
+  if (bgm.paused) {
+    bgm.play().catch(()=>{});
+  }
+});
   const ctx = cv.getContext("2d");
   const W = cv.width;
   const H = cv.height;
