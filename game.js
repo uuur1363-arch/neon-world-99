@@ -344,15 +344,17 @@ sMiss.play().catch(()=>{});
       const wallet =
         (modeNow === "ranked" ? (localStorage.getItem("neon99_wallet") || "") : "") || "guest";
 
-      fetch("/api/submit-score", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          wallet,
-          score: Number(finalScore),
-          city: currentCity,
-          country: getCountry()
-        })
+fetch("/api/submit-score", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    wallet,
+    score: Number(finalScore),
+    city: currentCity,
+    country: getCountry(),
+    ref: localStorage.getItem("neon99_ref") || ""
+  })
+})
       }).catch(() => {});
     } catch {}
 
