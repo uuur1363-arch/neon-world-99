@@ -262,6 +262,13 @@ function runMiniGame() {
       combo++;
       score += 200 + combo * 10;
       flash("PERFECT");
+      sHit.currentTime = 0;
+sHit.play().catch(()=>{});
+
+if(combo % 10 === 0){
+  sCombo.currentTime = 0;
+  sCombo.play().catch(()=>{});
+}
     } else {
       combo = Math.max(0, combo - 2);
       score = Math.max(0, score - 80);
