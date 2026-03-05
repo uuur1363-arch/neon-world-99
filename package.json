@@ -2,7 +2,7 @@
   "name": "neon-world-99",
   "private": true,
   "dependencies": {
-    "@solana/web3.js": "^1.98.0",
-    "@supabase/supabase-js": "^2.49.0"
+    "@supabase/supabase-js": "^2.49.0",
+    "node-fetch": "^2.6.9"
   }
 }
