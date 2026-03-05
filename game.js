@@ -1,80 +1,72 @@
-// NEON WORLD '99 — Clean Mobile Web MVP
-// City select -> 60s rhythm mini game -> score -> unlock cities
-// Global leaderboard via /api/submit-score + /api/score
+// NEON WORLD '99 — CLEAN BUILD (Remote City Music + Leaderboard)
+// Works on mobile: music starts on first user gesture (tap)
 
 // =====================
-// AUDIO (CDN) — change URLs later if you want
+// CITY MUSIC (REMOTE MP3) — replace URLs if needed
 // =====================
-const AUDIO = {
-  muted: false,
-  unlocked: false,
-  bgm: null,
-  hit: null,
-  miss: null,
+const MUSIC_BY_CITY = {
+  "New York": "https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Kevin_MacLeod/8bit_Dungeon_Level/Kevin_MacLeod_-_Pixelland.mp3",
+  "Tokyo":    "https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Kevin_MacLeod/8bit_Dungeon_Level/Kevin_MacLeod_-_Bit_Shift.mp3",
+  "Berlin":   "https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Kevin_MacLeod/8bit_Dungeon_Level/Kevin_MacLeod_-_Cipher.mp3",
+  "Rio":      "https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Kevin_MacLeod/8bit_Dungeon_Level/Kevin_MacLeod_-_Pixel_Peeker_Polka.mp3",
+  "Seoul":    "https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Kevin_MacLeod/8bit_Dungeon_Level/Kevin_MacLeod_-_8bit_Dungeon_Level.mp3",
 };
 
-// You can replace these with your own links later.
-// (Keeping CDN avoids the "audio folder" trouble on mobile GitHub.)
-const AUDIO_URLS = {
-  bgm: "https://cdn.pixabay.com/download/audio/2022/03/15/audio_6c6a4c7e7b.mp3",
-  hit: "https://cdn.pixabay.com/download/audio/2022/03/15/audio_c3c8c8c8c5.mp3",
+// Simple SFX (remote). You can replace later.
+const SFX = {
+  hit:  "https://cdn.pixabay.com/download/audio/2022/03/15/audio_c3c8c8c8c5.mp3",
   miss: "https://cdn.pixabay.com/download/audio/2022/03/15/audio_7c0d0a0a6c.mp3",
 };
 
-function audioInit() {
-  if (AUDIO.bgm) return;
-  AUDIO.bgm = new Audio(AUDIO_URLS.bgm);
-  AUDIO.bgm.loop = true;
-  AUDIO.bgm.volume = 0.35;
+let bgm = new Audio();
+bgm.loop = true;
+bgm.volume = 0.35;
+bgm.preload = "auto";
 
-  AUDIO.hit = new Audio(AUDIO_URLS.hit);
-  AUDIO.hit.volume = 0.85;
+let hitSound = new Audio(SFX.hit);
+let missSound = new Audio(SFX.miss);
+hitSound.volume = 0.9;
+missSound.volume = 0.9;
 
-  AUDIO.miss = new Audio(AUDIO_URLS.miss);
-  AUDIO.miss.volume = 0.85;
+let muted = false;
+let musicStarted = false;
+
+function setBgmForCity(city) {
+  const url = MUSIC_BY_CITY[city] || MUSIC_BY_CITY["New York"];
+  if (!url) return;
+  if (bgm.src !== url) bgm.src = url;
 }
 
-// must be called only after user gesture (tap/click)
-async function audioUnlockAndStart() {
-  if (AUDIO.muted) return;
-  audioInit();
-  if (AUDIO.unlocked) return;
-
-  AUDIO.unlocked = true;
+// MUST be called inside a user gesture event on mobile
+function startMusicFromGesture(city) {
+  if (muted) return;
   try {
-    await AUDIO.bgm.play();
-  } catch (e) {
-    // mobile may still block; we'll try again on next tap
-  }
-}
-
-function audioStop() {
-  try {
-    if (AUDIO.bgm) {
-      AUDIO.bgm.pause();
-      AUDIO.bgm.currentTime = 0;
-    }
+    setBgmForCity(city);
+    bgm.play(); // no await (mobile-friendly)
+    musicStarted = true;
   } catch (e) {}
 }
 
-function audioSfx(which) {
-  if (AUDIO.muted) return;
-  audioInit();
-  const a = which === "hit" ? AUDIO.hit : AUDIO.miss;
-  if (!a) return;
+function stopMusic() {
   try {
+    bgm.pause();
+    bgm.currentTime = 0;
+  } catch (e) {}
+}
+
+function sfx(which) {
+  if (muted) return;
+  try {
+    const a = which === "hit" ? hitSound : missSound;
     a.currentTime = 0;
     a.play().catch(() => {});
   } catch (e) {}
 }
 
-function audioToggleMute() {
-  AUDIO.muted = !AUDIO.muted;
-  try {
-    if (AUDIO.muted) AUDIO.bgm && AUDIO.bgm.pause();
-    else audioUnlockAndStart();
-  } catch (e) {}
-  return AUDIO.muted;
+function toggleMute() {
+  muted = !muted;
+  if (muted) stopMusic();
+  return muted;
 }
 
 // =====================
@@ -88,7 +80,6 @@ function loadBest() {
     return 0;
   }
 }
-
 function saveBest(v) {
   try {
     localStorage.setItem("neon99_best", String(v));
@@ -110,18 +101,16 @@ const unlock = [
 ];
 
 // =====================
-// NAV (called from buttons)
+// NAV helpers (buttons in html can call these)
 // =====================
 function goFree() {
   localStorage.setItem("neon99_mode", "free");
   location.href = "/city.html";
 }
-
 function goRanked() {
   localStorage.setItem("neon99_mode", "ranked");
   location.href = "/city.html";
 }
-
 function goBoard() {
   location.href = "/board.html";
 }
@@ -130,7 +119,7 @@ function goBoard() {
 // CITY SELECT (called from city.html onclick="city('Tokyo')")
 // =====================
 function city(name) {
-  // Ranked lock check (pass_until)
+  // Ranked lock check
   const mode = localStorage.getItem("neon99_mode") || "free";
   if (mode === "ranked") {
     const pu = parseInt(localStorage.getItem("neon99_pass_until") || "0", 10);
@@ -141,10 +130,7 @@ function city(name) {
   }
 
   const cityData = unlock.find((c) => c.name === name);
-  if (!cityData) {
-    alert("Unknown city");
-    return;
-  }
+  if (!cityData) return alert("Unknown city");
 
   if (bestScore < cityData.need) {
     alert("LOCKED\nYou need " + cityData.need + " score");
@@ -187,20 +173,27 @@ function startGame() {
       <div style="margin-top:10px; color:rgba(255,255,255,.7); font-size:12px;">
         Swipe L/R = tempo · Hold = reverse
       </div>
+      <div style="margin-top:6px; color:rgba(255,255,255,.5); font-size:11px;">
+        Music starts on first tap (mobile rule)
+      </div>
     </div>
   `;
 
   document.getElementById("exit").onclick = backToCities;
   document.getElementById("mute").onclick = () => {
-    const m = audioToggleMute();
+    const m = toggleMute();
     document.getElementById("mute").textContent = m ? "UNMUTE" : "MUTE";
+    if (!m && musicStarted) {
+      // try resume if user already started once
+      try { bgm.play(); } catch(e) {}
+    }
   };
 
   runMiniGame();
 }
 
 function backToCities() {
-  audioStop();
+  stopMusic();
   location.reload();
 }
 
@@ -213,29 +206,27 @@ function runMiniGame() {
   const W = cv.width;
   const H = cv.height;
 
+  // Start music on first user gesture
+  const startOnce = () => {
+    if (musicStarted) return;
+    startMusicFromGesture(currentCity);
+  };
+  cv.addEventListener("touchstart", startOnce, { passive: true });
+  cv.addEventListener("mousedown", startOnce);
+  cv.addEventListener("click", startOnce);
+
   let tLeft = 60.0;
   let score = 0;
   let combo = 0;
 
-  // tempo control
   let bpm = 120;
   let reverse = false;
 
-  // notes
   const notes = [];
   let spawnAcc = 0;
 
-  // swipe
   let sx = null;
-
-  // 🔑 Audio unlock on first gesture
-  const unlockAudioOnce = () => audioUnlockAndStart();
-  cv.addEventListener("touchstart", unlockAudioOnce, { passive: true });
-  cv.addEventListener("mousedown", unlockAudioOnce);
-
-  const onTouchStart = (e) => {
-    sx = e.touches[0].clientX;
-  };
+  const onTouchStart = (e) => { sx = e.touches[0].clientX; };
   const onTouchMove = (e) => {
     if (sx == null) return;
     const x = e.touches[0].clientX;
@@ -245,11 +236,8 @@ function runMiniGame() {
       sx = x;
     }
   };
-  const onTouchEnd = () => {
-    sx = null;
-  };
+  const onTouchEnd = () => { sx = null; };
 
-  // tap = hit
   const onTap = () => {
     const hitY = H * 0.78;
     const idx = notes.findIndex((n) => Math.abs(n.y - hitY) < 18);
@@ -258,16 +246,15 @@ function runMiniGame() {
       combo++;
       score += 200 + combo * 10;
       flash("PERFECT");
-      audioSfx("hit");
+      sfx("hit");
     } else {
       combo = Math.max(0, combo - 2);
       score = Math.max(0, score - 80);
       flash("MISS");
-      audioSfx("miss");
+      sfx("miss");
     }
   };
 
-  // hold = reverse
   let holdTimer = null;
   const onHoldStart = () => {
     holdTimer = setTimeout(() => {
@@ -289,13 +276,9 @@ function runMiniGame() {
   cv.addEventListener("mouseup", onHoldEnd);
   cv.addEventListener("mouseleave", onHoldEnd);
 
-  // message flash
   let msg = "";
   let msgT = 0;
-  function flash(s) {
-    msg = s;
-    msgT = 0.8;
-  }
+  function flash(s) { msg = s; msgT = 0.8; }
 
   let last = performance.now();
   function loop(now) {
@@ -305,7 +288,6 @@ function runMiniGame() {
     tLeft -= dt;
     if (tLeft < 0) tLeft = 0;
 
-    // spawn notes based on bpm
     const bps = bpm / 60;
     spawnAcc += bps * dt;
     if (spawnAcc >= 1) {
@@ -313,12 +295,8 @@ function runMiniGame() {
       notes.push({ y: -20, speed: 180 + (bpm - 110) * 1.2 });
     }
 
-    // update notes
-    for (const n of notes) {
-      n.y += (reverse ? -1 : 1) * n.speed * dt;
-    }
+    for (const n of notes) n.y += (reverse ? -1 : 1) * n.speed * dt;
 
-    // miss notes
     const hitY = H * 0.78;
     for (let i = notes.length - 1; i >= 0; i--) {
       if (notes[i].y > hitY + 40) {
@@ -329,17 +307,14 @@ function runMiniGame() {
       if (notes[i] && notes[i].y < -80) notes.splice(i, 1);
     }
 
-    // passive tempo bonus near 120
     const tempoBonus = Math.max(0, 1 - Math.abs(120 - bpm) / 40);
     score += tempoBonus * 10 * dt * (1 + combo / 30);
 
     draw(ctx, W, H, bpm, reverse, notes, msg, msgT);
 
-    // hud
     document.getElementById("t").textContent = String(Math.ceil(tLeft));
     document.getElementById("s").textContent = String(score | 0);
     document.getElementById("c").textContent = `x${combo}`;
-
     if (msgT > 0) msgT -= dt;
 
     if (tLeft <= 0) {
@@ -351,12 +326,12 @@ function runMiniGame() {
   requestAnimationFrame(loop);
 
   function end(finalScore) {
-    audioStop();
+    stopMusic();
 
     bestScore = Math.max(bestScore, finalScore);
     saveBest(bestScore);
 
-    // ✅ submit score (FREE -> guest, RANKED -> wallet if exists else guest)
+    // submit score to backend
     try {
       const modeNow = localStorage.getItem("neon99_mode") || "free";
       const wallet =
@@ -366,11 +341,7 @@ function runMiniGame() {
       fetch("/api/submit-score", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          wallet,
-          score: Number(finalScore),
-          city: currentCity,
-        }),
+        body: JSON.stringify({ wallet, score: Number(finalScore), city: currentCity }),
       }).catch(() => {});
     } catch (e) {}
 
@@ -388,7 +359,6 @@ function draw(ctx, W, H, bpm, reverse, notes, msg, msgT) {
   ctx.fillStyle = "rgba(0,0,0,0.45)";
   ctx.fillRect(0, 0, W, H);
 
-  // scanlines
   ctx.strokeStyle = "rgba(255,255,255,0.05)";
   for (let y = 0; y < H; y += 6) {
     ctx.beginPath();
@@ -401,7 +371,6 @@ function draw(ctx, W, H, bpm, reverse, notes, msg, msgT) {
   ctx.fillStyle = "rgba(0,212,255,0.08)";
   ctx.fillRect(laneX - 70, 0, 140, H);
 
-  // hit line
   const hitY = H * 0.78;
   ctx.strokeStyle = "rgba(168,255,62,0.6)";
   ctx.beginPath();
@@ -409,7 +378,6 @@ function draw(ctx, W, H, bpm, reverse, notes, msg, msgT) {
   ctx.lineTo(laneX + 90, hitY);
   ctx.stroke();
 
-  // notes
   for (const n of notes) {
     ctx.fillStyle = "rgba(255,45,107,0.8)";
     ctx.fillRect(laneX - 36, n.y, 72, 16);
@@ -417,7 +385,6 @@ function draw(ctx, W, H, bpm, reverse, notes, msg, msgT) {
     ctx.strokeRect(laneX - 36, n.y, 72, 16);
   }
 
-  // bpm indicator
   ctx.font = "14px monospace";
   ctx.fillStyle = "rgba(255,255,255,0.75)";
   ctx.fillText(`BPM ${Math.round(bpm)}${reverse ? " (REV)" : ""}`, 12, 24);
