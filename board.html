@@ -1,43 +1,50 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <title>NEON WORLD '99 — Leaderboard</title>
-  <link rel="stylesheet" href="styles.css">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Leaderboard</title>
 </head>
-<body>
-  <div id="crt"></div>
 
-  <div class="screen">
-    <div class="logo">
-      <div class="title">LEADERBOARD</div>
-      <div class="tagline">GLOBAL TOP 20</div>
-    </div>
+<body style="background:black;color:white;font-family:monospace">
 
-    <div class="panel" id="list">
-      <div class="muted small">Loading...</div>
-      <div class="hr"></div>
-      <button class="btn btn-ghost" onclick="location.href='/'">BACK</button>
-    </div>
-  </div>
+<h2>GLOBAL LEADERBOARD</h2>
 
-  <script>
-    async function load(){
-      const r = await fetch("/api/leaderboard");
-      const j = await r.json();
-      const box = document.getElementById("list");
-      if(!j.ok){
-        box.innerHTML = '<div class="muted small">Error: '+(j.error||'')+'</div><div class="hr"></div><button class="btn btn-ghost" onclick="location.href=\'/\'">BACK</button>';
-        return;
-      }
-      const rows = (j.top||[]).map((u,i)=>{
-        const w = u.wallet || "";
-        const short = w ? (w.slice(0,6)+'...'+w.slice(-4)) : "anon";
-        return `<div class="kv"><span>#${i+1} ${short}</span><span>${u.best_score||0}</span></div>`;
-      }).join("");
-      box.innerHTML = rows + '<div class="hr"></div><button class="btn btn-ghost" onclick="location.href=\'/\'">BACK</button>';
-    }
-    load();
-  </script>
+<div id="list">Loading...</div>
+
+<script>
+
+async function load(){
+
+const r = await fetch("/api/score");
+const j = await r.json();
+
+if(!j.ok){
+document.getElementById("list").innerHTML="error";
+return;
+}
+
+let html="";
+
+j.top.forEach((u,i)=>{
+
+let w=u.wallet.slice(0,6)+"..."+u.wallet.slice(-4);
+
+html+=`
+<div style="display:flex;justify-content:space-between;padding:6px 0">
+<div>#${i+1} ${w}</div>
+<div>${u.best_score}</div>
+</div>
+`;
+
+});
+
+document.getElementById("list").innerHTML=html;
+
+}
+
+load();
+
+</script>
+
 </body>
 </html>
