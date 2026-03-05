@@ -273,6 +273,8 @@ if(combo % 10 === 0){
       combo = Math.max(0, combo - 2);
       score = Math.max(0, score - 80);
       flash("MISS");
+      sMiss.currentTime = 0;
+sMiss.play().catch(()=>{});
     }
   }
 
