@@ -84,6 +84,11 @@ const sig=await connection.sendRawTransaction(signed.serialize())
 await connection.confirmTransaction(sig)
 
 alert("Payment successful")
+  await fetch("/api/jackpot", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ add_sol: 0.01 })
+}).catch(()=>{});
 
 const until=Date.now()+86400000
 
