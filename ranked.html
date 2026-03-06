@@ -104,10 +104,10 @@
         setStatus("Connecting wallet...");
         await provider.connect();
 
-        const connection = new solanaWeb3.Connection(
-          "https://api.mainnet.solana.com",
-          "confirmed"
-        );
+const connection = new solanaWeb3.Connection(
+  "https://mainnet.helius-rpc.com/?api-key=90694f7d-eb47-4aff-930b-1833e1821150",
+  "confirmed"
+);
 
         setStatus("Preparing transaction...");
 
