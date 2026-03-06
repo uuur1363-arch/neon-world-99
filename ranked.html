@@ -12,7 +12,6 @@
       margin:0;
       padding:40px 20px;
     }
-
     .box{
       max-width:420px;
       margin:80px auto 0;
@@ -21,12 +20,10 @@
       border-radius:14px;
       background:rgba(255,255,255,.03);
     }
-
     h2{
       color:#00d4ff;
       margin-top:0;
     }
-
     button{
       padding:14px 22px;
       font-size:16px;
@@ -38,13 +35,11 @@
       width:100%;
       margin-top:10px;
     }
-
     .muted{
       color:#999;
       font-size:13px;
       line-height:1.5;
     }
-
     #status{
       margin-top:16px;
       font-size:14px;
@@ -52,7 +47,6 @@
       min-height:40px;
       white-space:pre-wrap;
     }
-
     a{
       color:#888;
       text-decoration:none;
@@ -64,11 +58,9 @@
   <div class="box">
     <h2>RANKED MODE</h2>
     <p>Entry Fee: <b>0.01 SOL</b></p>
-    <p class="muted">
-      Payment unlocks ranked mode for <b>24 hours</b>.
-    </p>
+    <p class="muted">Payment unlocks ranked mode for <b>24 hours</b>.</p>
 
-    <button onclick="pay()">CONNECT WALLET & PAY</button>
+    <button id="payBtn">CONNECT WALLET & PAY</button>
 
     <div id="status"></div>
 
@@ -82,8 +74,11 @@
     const DEST = "8UH2aQubZ5kjR5PpesoPio4zkAfafoMY5hHuKrPYz6ct";
     const ENTRY_LAMPORTS = 10000000; // 0.01 SOL
 
+    const payBtn = document.getElementById("payBtn");
+    const statusEl = document.getElementById("status");
+
     function setStatus(msg){
-      document.getElementById("status").textContent = msg;
+      statusEl.textContent = msg;
     }
 
     function getProvider(){
@@ -93,6 +88,8 @@
     }
 
     async function pay(){
+      payBtn.disabled = true;
+
       try{
         setStatus("Checking wallet...");
 
@@ -108,9 +105,9 @@
         await provider.connect();
 
         const connection = new solanaWeb3.Connection(
-"https://solana-api.projectserum.com",
-"confirmed"
-);
+          "https://api.mainnet.solana.com",
+          "confirmed"
+        );
 
         setStatus("Preparing transaction...");
 
@@ -128,7 +125,6 @@
 
         setStatus("Waiting for Phantom approval...");
 
-        // Mobil Phantom için en güvenli yöntem
         const result = await provider.signAndSendTransaction(transaction);
         const signature = result.signature;
 
@@ -142,10 +138,9 @@
 
         setStatus("Payment successful!\nRanked unlocked for 24 hours.");
 
-        const until = Date.now() + 86400000; // 24 saat
+        const until = Date.now() + 86400000;
         localStorage.setItem("neon99_pass_until", String(until));
 
-        // jackpot endpoint varsa artır
         try{
           await fetch("/api/jackpot", {
             method: "POST",
@@ -159,10 +154,15 @@
 
       }catch(err){
         console.error(err);
-        setStatus("Payment failed:\n" + (err?.message || String(err)));
-        alert("Payment failed:\n" + (err?.message || String(err)));
+        const msg = err?.message || String(err);
+        setStatus("Payment failed:\n" + msg);
+        alert("Payment failed:\n" + msg);
+      }finally{
+        payBtn.disabled = false;
       }
     }
+
+    payBtn.addEventListener("click", pay);
   </script>
 
 </body>
