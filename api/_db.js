@@ -1,15 +1,16 @@
-export const runtime = "nodejs";
-
 import { createClient } from "@supabase/supabase-js";
-import fetch from "node-fetch";
 
 export function supa() {
-  return createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY,
-    {
-      auth: { persistSession: false },
-      global: { fetch }
-    }
-  );
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !key) {
+    throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+  }
+
+  return createClient(url, key);
+}
+
+export function nowMs() {
+  return Date.now();
 }
