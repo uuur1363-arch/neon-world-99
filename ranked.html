@@ -5,8 +5,8 @@
   <title>Ranked Entry</title>
   <style>
     body{
-      background:#000;
-      color:#fff;
+      background:black;
+      color:white;
       font-family:monospace;
       text-align:center;
       margin:0;
@@ -24,7 +24,7 @@
       padding:14px 22px;
       font-size:16px;
       background:#00d4ff;
-      color:#000;
+      color:black;
       border:none;
       border-radius:10px;
       width:100%;
@@ -100,6 +100,28 @@
       });
     }
 
+    function readErrorMessage(err) {
+      const msg = String(err?.message || err || "");
+
+      if (msg.includes("User rejected")) {
+        return "User rejected the request.";
+      }
+
+      if (
+        msg.includes("block height exceeded") ||
+        msg.includes("TransactionExpiredBlockheightExceededError") ||
+        msg.includes("expired")
+      ) {
+        return "Transaction expired. Please try again and approve faster.";
+      }
+
+      if (msg.includes("SOLANA_RPC_URL missing")) {
+        return "Server RPC is missing. Add SOLANA_RPC_URL in Vercel.";
+      }
+
+      return msg || "Payment failed";
+    }
+
     async function verifyWithServer(wallet, signature, memo) {
       const res = await fetch("/api/verify-payment", {
         method: "POST",
@@ -116,7 +138,7 @@
       let data = {};
       try {
         data = await res.json();
-      } catch (e) {}
+      } catch (_) {}
 
       if (!res.ok || !data.ok) {
         throw new Error(data.error || "Payment verification failed");
@@ -132,8 +154,8 @@
         const provider = getProvider();
 
         if (!provider) {
-          alert("Please open this page inside Phantom wallet browser.");
           setStatus("Phantom wallet not found");
+          alert("Open this page inside Phantom wallet browser.");
           return;
         }
 
@@ -186,18 +208,17 @@
 
         const passUntil =
           Number(verify.pass_until || 0) ||
-          Date.now() + UNLOCK_MS;
+          (Date.now() + UNLOCK_MS);
 
         localStorage.setItem("neon99_pass_until", String(passUntil));
 
         setStatus("Payment verified. Ranked unlocked.");
         alert("Ranked unlocked for 24 hours");
-
         location.href = "city.html";
 
       } catch (e) {
         console.error(e);
-        const msg = e?.message || String(e);
+        const msg = readErrorMessage(e);
         setStatus("Payment failed");
         alert("Payment failed:\n" + msg);
       } finally {
