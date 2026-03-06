@@ -36,6 +36,25 @@ function getMode() {
 function getCountry() {
   return localStorage.getItem("neon99_country") || "TR";
 }
+function getWallet() {
+  try {
+    return localStorage.getItem("neon99_wallet") || "";
+  } catch {
+    return "";
+  }
+}
+function getLocalPassUntil() {
+  try {
+    return parseInt(localStorage.getItem("neon99_pass_until") || "0", 10);
+  } catch {
+    return 0;
+  }
+}
+function setLocalPassUntil(v) {
+  try {
+    localStorage.setItem("neon99_pass_until", String(Number(v) || 0));
+  } catch {}
+}
 
 // ---------------- GLOBAL STATE ----------------
 let currentCity = "New York";
@@ -61,7 +80,6 @@ let bgmStarted = false;
 function musicForCity(city) {
   if (city === "Tokyo") return "/bgm_tokyo.mp3";
   if (city === "Berlin") return "/bgm_berlin.mp3";
-  // For now other cities use NY music (later we can add more tracks)
   return "/bgm_ny.mp3";
 }
 
@@ -101,7 +119,6 @@ function armMusicOnFirstTap() {
 function bgForCity(city) {
   if (city === "Tokyo") return "/bg_tokyo.jpg";
   if (city === "Berlin") return "/bg_berlin.jpg";
-  // For now other cities use NY background (later add more)
   return "/bg_ny.jpg";
 }
 
@@ -116,8 +133,57 @@ function applyBackground(city) {
 // ---------------- RANKED LOCK ----------------
 function rankedLocked() {
   if (getMode() !== "ranked") return false;
-  const pu = parseInt(localStorage.getItem("neon99_pass_until") || "0", 10);
+  const pu = getLocalPassUntil();
   return Date.now() > pu;
+}
+
+async function fetchRankedPassFromServer() {
+  const wallet = getWallet();
+
+  if (!wallet) {
+    return {
+      ok: false,
+      pass: false,
+      pass_until: 0,
+      reason: "no_wallet"
+    };
+  }
+
+  const res = await fetch(`/api/me?wallet=${encodeURIComponent(wallet)}`, {
+    method: "GET"
+  });
+
+  let data = {};
+  try {
+    data = await res.json();
+  } catch {}
+
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to check ranked pass");
+  }
+
+  const passUntil = Number(data.pass_until || 0);
+  setLocalPassUntil(passUntil);
+
+  return {
+    ok: !!data.ok,
+    pass: !!data.pass,
+    pass_until: passUntil
+  };
+}
+
+async function ensureRankedAccess() {
+  if (getMode() !== "ranked") return true;
+
+  const wallet = getWallet();
+  if (!wallet) return false;
+
+  try {
+    const passInfo = await fetchRankedPassFromServer();
+    return !!(passInfo.ok && passInfo.pass && Date.now() < Number(passInfo.pass_until || 0));
+  } catch (e) {
+    return !rankedLocked();
+  }
 }
 
 // ---------------- NAV HELPERS (buttons in index.html) ----------------
@@ -136,10 +202,13 @@ window.goBoard = function () {
 };
 
 // ---------------- CITY SELECT (called from city.html) ----------------
-window.city = function (name) {
-  if (rankedLocked()) {
-    alert("RANKED locked.\nConnect + Pay 0.01 SOL first.");
-    return;
+window.city = async function (name) {
+  if (getMode() === "ranked") {
+    const hasAccess = await ensureRankedAccess();
+    if (!hasAccess) {
+      alert("RANKED locked.\nConnect + Pay 0.01 SOL first.");
+      return;
+    }
   }
 
   const cityData = UNLOCKS.find(c => c.name === name);
@@ -206,9 +275,7 @@ function startGame() {
 
   document.getElementById("playMusic").onclick = startMusicGesture;
 
-  // also start music on first tap anywhere
   armMusicOnFirstTap();
-
   runMiniGame();
 }
 
@@ -223,14 +290,12 @@ function runMiniGame() {
   let score = 0;
   let combo = 0;
 
-  // tempo control
   let bpm = 120;
   let reverse = false;
 
   const notes = [];
   let spawnAcc = 0;
 
-  // swipe for bpm
   let sx = null;
   cv.addEventListener("touchstart", (e) => { sx = e.touches[0].clientX; }, { passive: true });
   cv.addEventListener("touchmove", (e) => {
@@ -244,10 +309,8 @@ function runMiniGame() {
   }, { passive: true });
   cv.addEventListener("touchend", () => { sx = null; }, { passive: true });
 
-  // tap = hit
   cv.addEventListener("click", onTap);
 
-  // hold = reverse
   let holdTimer = null;
   cv.addEventListener("mousedown", () => {
     holdTimer = setTimeout(() => { reverse = true; flash("REVERSE"); }, 220);
@@ -260,13 +323,11 @@ function runMiniGame() {
   cv.addEventListener("mouseup", holdEnd);
   cv.addEventListener("mouseleave", holdEnd);
 
-  // message flash
   let msg = "";
   let msgT = 0;
   function flash(s) { msg = s; msgT = 0.8; }
 
   function onTap() {
-    // safe: try start music on tap
     startMusicGesture();
 
     const hitY = H * 0.78;
@@ -298,7 +359,6 @@ function runMiniGame() {
     tLeft -= dt;
     if (tLeft < 0) tLeft = 0;
 
-    // spawn notes based on bpm
     const bps = bpm / 60;
     spawnAcc += bps * dt;
     if (spawnAcc >= 1) {
@@ -306,10 +366,8 @@ function runMiniGame() {
       notes.push({ y: -20, speed: 180 + (bpm - 110) * 1.2 });
     }
 
-    // update notes
     for (const n of notes) n.y += (reverse ? -1 : 1) * n.speed * dt;
 
-    // miss notes
     const hitY = H * 0.78;
     for (let i = notes.length - 1; i >= 0; i--) {
       if (notes[i].y > hitY + 40) {
@@ -320,7 +378,6 @@ function runMiniGame() {
       if (notes[i] && notes[i].y < -80) notes.splice(i, 1);
     }
 
-    // passive tempo bonus near 120
     const tempoBonus = Math.max(0, 1 - Math.abs(120 - bpm) / 40);
     score += tempoBonus * 10 * dt * (1 + combo / 30);
 
@@ -345,11 +402,10 @@ function runMiniGame() {
     bestScore = Math.max(bestScore, finalScore);
     saveBest(bestScore);
 
-    // submit score
     try {
       const modeNow = getMode();
       const wallet =
-        (modeNow === "ranked" ? (localStorage.getItem("neon99_wallet") || "") : "") || "guest";
+        (modeNow === "ranked" ? (getWallet() || "") : "") || "guest";
 
       fetch("/api/submit-score", {
         method: "POST",
@@ -358,7 +414,8 @@ function runMiniGame() {
           wallet,
           score: Number(finalScore),
           city: currentCity,
-          country: getCountry()
+          country: getCountry(),
+          mode: modeNow
         })
       }).catch(() => {});
     } catch {}
@@ -376,7 +433,6 @@ function draw(ctx, W, H, bpm, reverse, notes, msg, msgT) {
   ctx.fillStyle = "rgba(0,0,0,0.45)";
   ctx.fillRect(0, 0, W, H);
 
-  // scanlines
   ctx.strokeStyle = "rgba(255,255,255,0.05)";
   for (let y = 0; y < H; y += 6) {
     ctx.beginPath();
@@ -389,7 +445,6 @@ function draw(ctx, W, H, bpm, reverse, notes, msg, msgT) {
   ctx.fillStyle = "rgba(0,212,255,0.08)";
   ctx.fillRect(laneX - 70, 0, 140, H);
 
-  // hit line
   const hitY = H * 0.78;
   ctx.strokeStyle = "rgba(168,255,62,0.6)";
   ctx.beginPath();
@@ -397,7 +452,6 @@ function draw(ctx, W, H, bpm, reverse, notes, msg, msgT) {
   ctx.lineTo(laneX + 90, hitY);
   ctx.stroke();
 
-  // notes
   for (const n of notes) {
     ctx.fillStyle = "rgba(255,45,107,0.8)";
     ctx.fillRect(laneX - 36, n.y, 72, 16);
@@ -405,7 +459,6 @@ function draw(ctx, W, H, bpm, reverse, notes, msg, msgT) {
     ctx.strokeRect(laneX - 36, n.y, 72, 16);
   }
 
-  // bpm indicator
   ctx.font = "14px monospace";
   ctx.fillStyle = "rgba(255,255,255,0.75)";
   ctx.fillText(`BPM ${Math.round(bpm)}${reverse ? " (REV)" : ""}`, 12, 24);
