@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ranked Entry</title>
+
+<style>
+
+body{
+background:black;
+color:white;
+font-family:monospace;
+text-align:center;
+margin-top:120px;
+}
+
+button{
+padding:12px 20px;
+font-size:16px;
+background:#00d4ff;
+border:none;
+border-radius:8px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h2>RANKED MODE</h2>
+
+<p>Entry Fee: 0.01 SOL</p>
+
+<button onclick="pay()">CONNECT & PAY</button>
+
+<script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.js"></script>
+
+<script>
+
+const DEST="8UH2aQubZ5kjR5PpesoPio4zkAfafoMY5hHuKrPYz6ct"
+
+async function pay(){
+
+if(!window.solana){
+
+alert("Install Phantom Wallet")
+
+return
+
+}
+
+const provider=window.solana
+
+await provider.connect()
+
+const connection=new solanaWeb3.Connection(
+"https://api.mainnet-beta.solana.com"
+)
+
+const tx=new solanaWeb3.Transaction().add(
+
+solanaWeb3.SystemProgram.transfer({
+
+fromPubkey:provider.publicKey,
+
+toPubkey:new solanaWeb3.PublicKey(DEST),
+
+lamports:10000000
+
+})
+
+)
+
+tx.feePayer=provider.publicKey
+
+tx.recentBlockhash=(await connection.getLatestBlockhash()).blockhash
+
+const signed=await provider.signTransaction(tx)
+
+const sig=await connection.sendRawTransaction(signed.serialize())
+
+await connection.confirmTransaction(sig)
+
+alert("Payment successful")
+
+const until=Date.now()+86400000
+
+localStorage.setItem("neon99_pass_until",until)
+
+location.href="city.html"
+
+}
+
+</script>
+
+</body>
+
+</html>
