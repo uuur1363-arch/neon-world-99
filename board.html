@@ -5,76 +5,85 @@
 <title>Leaderboard</title>
 </head>
 
-<body style="background:black;color:white;font-family:monospace">
+<body style="background:black;color:white;font-family:monospace;padding:16px;">
+
+<div id="jackpot" style="
+padding:12px;
+border:1px solid rgba(255,255,255,.2);
+border-radius:10px;
+margin-bottom:20px;
+font-size:14px;
+">
+LOADING JACKPOT...
+</div>
 
 <h2>🌍 COUNTRY WAR</h2>
 <div id="countries">Loading...</div>
 
 <br><br>
 
-<h2>🏆 GLOBAL PLAYERS</h2>
+<h2>🏆 GLOBAL LEADERBOARD</h2>
 <div id="players">Loading...</div>
 
 <script>
-
 function flagEmoji(cc){
   if(!cc) return "🏳️";
   const s = cc.toUpperCase();
   const A = 0x1F1E6;
   const code = c => A + (c.charCodeAt(0)-65);
-  if(s.length!==2) return "🏳️";
-  return String.fromCodePoint(code(s[0]),code(s[1]));
+  if(s.length !== 2) return "🏳️";
+  return String.fromCodePoint(code(s[0]), code(s[1]));
 }
 
 async function load(){
 
-const r = await fetch("/api/score");
-const j = await r.json();
+  // JACKPOT
+  const jr = await fetch("/api/jackpot");
+  const jj = await jr.json();
 
-if(!j.ok){
-document.body.innerHTML="error";
-return;
-}
+  if(jj.ok){
+    document.getElementById("jackpot").innerHTML =
+      `💰 WEEKLY JACKPOT: <b>${jj.pool_sol} SOL</b><br>
+       🎟 Entries: ${jj.entries}<br>
+       📅 ${jj.week_key}`;
+  }
 
-// ----- country totals -----
-let chtml="";
+  // SCORE DATA
+  const r = await fetch("/api/score");
+  const j = await r.json();
 
-(j.countries || []).forEach((c,i)=>{
+  if(!j.ok){
+    document.body.innerHTML = "error";
+    return;
+  }
 
-chtml+=`
-<div style="display:flex;justify-content:space-between;padding:6px 0">
-<div>#${i+1} ${flagEmoji(c.country)} ${c.country}</div>
-<div>${c.score}</div>
-</div>
-`;
+  // COUNTRY TOTALS
+  let chtml = "";
+  (j.countries || []).forEach((c,i)=>{
+    chtml += `
+    <div style="display:flex;justify-content:space-between;padding:6px 0">
+      <div>#${i+1} ${flagEmoji(c.country)} ${c.country}</div>
+      <div>${c.score}</div>
+    </div>
+    `;
+  });
+  document.getElementById("countries").innerHTML = chtml || "No country data yet.";
 
-});
-
-document.getElementById("countries").innerHTML=chtml;
-
-
-// ----- players -----
-let phtml="";
-
-(j.top || []).forEach((u,i)=>{
-
-let w=u.wallet.slice(0,6)+"..."+u.wallet.slice(-4);
-
-phtml+=`
-<div style="display:flex;justify-content:space-between;padding:6px 0">
-<div>#${i+1} ${flagEmoji(u.country)} ${w}</div>
-<div>${u.best_score}</div>
-</div>
-`;
-
-});
-
-document.getElementById("players").innerHTML=phtml;
-
+  // PLAYER SCORES
+  let phtml = "";
+  (j.top || []).forEach((u,i)=>{
+    let w = u.wallet.slice(0,6) + "..." + u.wallet.slice(-4);
+    phtml += `
+    <div style="display:flex;justify-content:space-between;padding:6px 0">
+      <div>#${i+1} ${flagEmoji(u.country)} ${w}</div>
+      <div>${u.best_score}</div>
+    </div>
+    `;
+  });
+  document.getElementById("players").innerHTML = phtml || "No player data yet.";
 }
 
 load();
-
 </script>
 
 </body>
