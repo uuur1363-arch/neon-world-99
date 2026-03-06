@@ -47,15 +47,15 @@ const DEST="8UH2aQubZ5kjR5PpesoPio4zkAfafoMY5hHuKrPYz6ct"
 
 async function pay(){
 
-if(!window.solana){
+const provider = window.phantom?.solana || window.solana;
 
-alert("Please open with Phantom Wallet")
+if(!provider){
+
+alert("Phantom Wallet not found.\nOpen this site inside Phantom browser.")
 
 return
 
 }
-
-const provider=window.solana
 
 await provider.connect()
 
