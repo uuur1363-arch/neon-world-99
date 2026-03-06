@@ -51,12 +51,10 @@
 
   <div class="box">
     <h2>RANKED MODE</h2>
-
     <p>Entry Fee: <b>0.01 SOL</b></p>
     <p>Unlocks ranked mode for <b>24 hours</b></p>
 
     <button id="payBtn">CONNECT WALLET & PAY</button>
-
     <div id="status"></div>
 
     <br />
@@ -100,19 +98,24 @@
       });
     }
 
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function isExpiredError(err) {
+      const msg = String(err?.message || err || "").toLowerCase();
+      return (
+        msg.includes("block height exceeded") ||
+        msg.includes("expired") ||
+        msg.includes("transactionexpiredblockheightexceedederror")
+      );
+    }
+
     function readErrorMessage(err) {
       const msg = String(err?.message || err || "");
 
       if (msg.includes("User rejected")) {
         return "User rejected the request.";
-      }
-
-      if (
-        msg.includes("block height exceeded") ||
-        msg.includes("TransactionExpiredBlockheightExceededError") ||
-        msg.includes("expired")
-      ) {
-        return "Transaction expired. Please try again and approve faster.";
       }
 
       if (msg.includes("SOLANA_RPC_URL missing")) {
@@ -147,8 +150,27 @@
       return data;
     }
 
+    async function unlockWithVerify(wallet, signature, memo) {
+      const verify = await verifyWithServer(wallet, signature, memo);
+
+      const passUntil =
+        Number(verify.pass_until || 0) ||
+        (Date.now() + UNLOCK_MS);
+
+      localStorage.setItem("neon99_pass_until", String(passUntil));
+      localStorage.setItem("neon99_wallet", wallet);
+
+      setStatus("Payment verified. Ranked unlocked.");
+      alert("Ranked unlocked for 24 hours");
+      location.href = "city.html";
+    }
+
     async function pay() {
       btn.disabled = true;
+
+      let wallet = "";
+      let memo = "";
+      let signature = "";
 
       try {
         const provider = getProvider();
@@ -161,7 +183,7 @@
 
         setStatus("Connecting wallet...");
         const connectResult = await provider.connect();
-        const wallet = (connectResult?.publicKey || provider.publicKey).toString();
+        wallet = (connectResult?.publicKey || provider.publicKey).toString();
 
         localStorage.setItem("neon99_wallet", wallet);
 
@@ -171,8 +193,9 @@
         );
 
         setStatus("Preparing transaction...");
+        memo = makeMemo(wallet);
+
         const latest = await connection.getLatestBlockhash("confirmed");
-        const memo = makeMemo(wallet);
 
         const tx = new solanaWeb3.Transaction().add(
           solanaWeb3.SystemProgram.transfer({
@@ -188,36 +211,51 @@
 
         setStatus("Waiting for Phantom approval...");
         const sendResult = await provider.signAndSendTransaction(tx);
-        const signature =
+        signature =
           typeof sendResult === "string"
             ? sendResult
             : sendResult.signature;
 
+        if (!signature) {
+          throw new Error("No transaction signature returned");
+        }
+
         setStatus("Confirming on-chain...");
-        await connection.confirmTransaction(
-          {
-            signature,
-            blockhash: latest.blockhash,
-            lastValidBlockHeight: latest.lastValidBlockHeight
-          },
-          "confirmed"
-        );
+        try {
+          await connection.confirmTransaction(
+            {
+              signature,
+              blockhash: latest.blockhash,
+              lastValidBlockHeight: latest.lastValidBlockHeight
+            },
+            "confirmed"
+          );
+        } catch (confirmErr) {
+          if (!isExpiredError(confirmErr)) {
+            throw confirmErr;
+          }
+
+          // confirm expired olsa bile tx zincire düşmüş olabilir
+          setStatus("Confirmation expired, checking payment...");
+          await sleep(2500);
+        }
 
         setStatus("Verifying payment...");
-        const verify = await verifyWithServer(wallet, signature, memo);
-
-        const passUntil =
-          Number(verify.pass_until || 0) ||
-          (Date.now() + UNLOCK_MS);
-
-        localStorage.setItem("neon99_pass_until", String(passUntil));
-
-        setStatus("Payment verified. Ranked unlocked.");
-        alert("Ranked unlocked for 24 hours");
-        location.href = "city.html";
+        await unlockWithVerify(wallet, signature, memo);
 
       } catch (e) {
         console.error(e);
+
+        // signature varsa son bir kez verify dene
+        if (wallet && memo && signature) {
+          try {
+            setStatus("Trying payment recovery...");
+            await sleep(1500);
+            await unlockWithVerify(wallet, signature, memo);
+            return;
+          } catch (_) {}
+        }
+
         const msg = readErrorMessage(e);
         setStatus("Payment failed");
         alert("Payment failed:\n" + msg);
