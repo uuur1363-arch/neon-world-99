@@ -35,7 +35,7 @@
     <div
       id="leaderBox"
       style="
-        margin:0 auto 26px auto;
+        margin:0 auto 14px auto;
         max-width:380px;
         padding:12px 14px;
         border:1px solid rgba(255,45,107,.30);
@@ -49,6 +49,25 @@
       <div style="color:#ff2d6b;font-weight:bold;">CURRENT LEADER</div>
       <div id="leaderWallet">Loading...</div>
       <div id="leaderScore" style="color:rgba(255,255,255,.7);font-size:12px;"></div>
+    </div>
+
+    <div
+      id="winnerBox"
+      style="
+        margin:0 auto 26px auto;
+        max-width:380px;
+        padding:12px 14px;
+        border:1px solid rgba(168,255,62,.30);
+        border-radius:12px;
+        color:#ffffff;
+        background:rgba(168,255,62,.08);
+        font-size:14px;
+        line-height:1.6;
+      "
+    >
+      <div style="color:#a8ff3e;font-weight:bold;">WEEKLY WINNER</div>
+      <div id="winnerWallet">Loading...</div>
+      <div id="winnerScore" style="color:rgba(255,255,255,.7);font-size:12px;"></div>
     </div>
 
     <button onclick="goFree()">START GAME</button>
@@ -70,6 +89,7 @@
 
     function shortWallet(w) {
       const s = String(w || "");
+      if (!s) return "N/A";
       if (s.length <= 12) return s;
       return s.slice(0, 4) + "..." + s.slice(-4);
     }
@@ -79,6 +99,8 @@
       const entriesEl = document.getElementById("jackpotEntries");
       const leaderWalletEl = document.getElementById("leaderWallet");
       const leaderScoreEl = document.getElementById("leaderScore");
+      const winnerWalletEl = document.getElementById("winnerWallet");
+      const winnerScoreEl = document.getElementById("winnerScore");
 
       try {
         const r = await fetch("/api/weekly-winner");
@@ -89,6 +111,8 @@
           entriesEl.textContent = "";
           leaderWalletEl.textContent = "Unavailable";
           leaderScoreEl.textContent = "";
+          winnerWalletEl.textContent = "Unavailable";
+          winnerScoreEl.textContent = "";
           return;
         }
 
@@ -106,11 +130,21 @@
           leaderWalletEl.textContent = "No ranked scores yet";
           leaderScoreEl.textContent = "Be the first leader this week";
         }
+
+        if (j.winner_wallet) {
+          winnerWalletEl.textContent = shortWallet(j.winner_wallet);
+          winnerScoreEl.textContent = `WINNING SCORE: ${Number(j.winner_score || 0)}`;
+        } else {
+          winnerWalletEl.textContent = "Week still open";
+          winnerScoreEl.textContent = "Winner will appear after weekly close";
+        }
       } catch (_) {
         amountEl.textContent = "Unavailable";
         entriesEl.textContent = "";
         leaderWalletEl.textContent = "Unavailable";
         leaderScoreEl.textContent = "";
+        winnerWalletEl.textContent = "Unavailable";
+        winnerScoreEl.textContent = "";
       }
     }
 
