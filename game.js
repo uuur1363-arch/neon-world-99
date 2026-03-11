@@ -297,21 +297,40 @@ function startGame() {
 }
 
 // ---------------- SHARE ----------------
-function buildShareText(finalScore, city, mode) {
+async function fetchCurrentJackpotText() {
+  try {
+    const r = await fetch("/api/weekly-winner");
+    const j = await r.json();
+
+    if (!r.ok || !j.ok) {
+      return "Weekly jackpot is live.";
+    }
+
+    const jackpotSol = Number(j.jackpot_sol || 0).toFixed(3);
+    return `Weekly jackpot is now ${jackpotSol} SOL.`;
+  } catch {
+    return "Weekly jackpot is live.";
+  }
+}
+
+async function buildShareText(finalScore, city, mode) {
+  const jackpotLine = await fetchCurrentJackpotText();
+
   const lines = [
     `I scored ${finalScore} in Neon World '99 🎮`,
     "",
     `${mode === "ranked" ? "Ranked mode is live on Solana." : "Retro arcade rhythm on Solana."}`,
     `City: ${city}`,
-    "Weekly jackpot is growing.",
+    jackpotLine,
     "",
     `Play now: ${SITE_URL}`
   ];
+
   return lines.join("\n");
 }
 
-function openShareScore(finalScore, city, mode) {
-  const text = buildShareText(finalScore, city, mode);
+async function openShareScore(finalScore, city, mode) {
+  const text = await buildShareText(finalScore, city, mode);
   const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
   window.open(url, "_blank");
 }
@@ -369,8 +388,17 @@ function showEndScreen(finalScore, unlocked, modeNow) {
     </div>
   `;
 
-  document.getElementById("shareScoreBtn").onclick = () => {
-    openShareScore(finalScore, currentCity, modeNow);
+  document.getElementById("shareScoreBtn").onclick = async () => {
+    const btn = document.getElementById("shareScoreBtn");
+    const oldText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "PREPARING SHARE...";
+    try {
+      await openShareScore(finalScore, currentCity, modeNow);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = oldText;
+    }
   };
 
   document.getElementById("playAgainBtn").onclick = () => {
