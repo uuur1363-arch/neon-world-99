@@ -298,18 +298,34 @@ function startGame() {
 
 // ---------------- SHARE ----------------
 async function fetchCurrentJackpotText() {
+  const fallback = "Weekly jackpot is live.";
+
   try {
-    const r = await fetch("/api/weekly-winner");
-    const j = await r.json();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2000);
+
+    const r = await fetch("/api/weekly-winner", {
+      method: "GET",
+      signal: controller.signal
+    });
+
+    clearTimeout(timeout);
+
+    let j = {};
+    try {
+      j = await r.json();
+    } catch (_) {
+      return fallback;
+    }
 
     if (!r.ok || !j.ok) {
-      return "Weekly jackpot is live.";
+      return fallback;
     }
 
     const jackpotSol = Number(j.jackpot_sol || 0).toFixed(3);
     return `Weekly jackpot is now ${jackpotSol} SOL.`;
-  } catch {
-    return "Weekly jackpot is live.";
+  } catch (_) {
+    return fallback;
   }
 }
 
@@ -332,7 +348,7 @@ async function buildShareText(finalScore, city, mode) {
 async function openShareScore(finalScore, city, mode) {
   const text = await buildShareText(finalScore, city, mode);
   const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
-  window.open(url, "_blank");
+  window.location.href = url;
 }
 
 function showEndScreen(finalScore, unlocked, modeNow) {
@@ -390,14 +406,15 @@ function showEndScreen(finalScore, unlocked, modeNow) {
 
   document.getElementById("shareScoreBtn").onclick = async () => {
     const btn = document.getElementById("shareScoreBtn");
-    const oldText = btn.textContent;
     btn.disabled = true;
-    btn.textContent = "PREPARING SHARE...";
+    btn.textContent = "OPENING X...";
+
     try {
       await openShareScore(finalScore, currentCity, modeNow);
-    } finally {
+    } catch (_) {
       btn.disabled = false;
-      btn.textContent = oldText;
+      btn.textContent = "SHARE SCORE";
+      alert("Share could not be opened.");
     }
   };
 
