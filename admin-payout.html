@@ -1,153 +1,301 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ADMIN PAYOUT</title>
-
-<style>
-body{
-background:black;
-color:white;
-font-family:monospace;
-text-align:center;
-padding:40px 20px;
-}
-
-.box{
-max-width:420px;
-margin:0 auto;
-border:1px solid rgba(255,255,255,.2);
-padding:20px;
-border-radius:12px;
-}
-
-button{
-width:100%;
-padding:14px;
-margin-top:10px;
-border-radius:10px;
-border:none;
-background:#00d4ff;
-font-weight:bold;
-}
-
-#status{
-margin-top:10px;
-min-height:30px;
-}
-</style>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NEON WORLD '99 — ADMIN PAYOUT</title>
+  <style>
+    body{
+      margin:0;
+      padding:24px 14px 40px;
+      background:#000;
+      color:#fff;
+      font-family:monospace;
+      text-align:center;
+    }
+    .wrap{
+      max-width:520px;
+      margin:0 auto;
+    }
+    h1{
+      color:#00d4ff;
+      margin:8px 0 6px;
+    }
+    .sub{
+      color:rgba(255,255,255,.7);
+      font-size:13px;
+      margin-bottom:18px;
+    }
+    .box{
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:14px;
+      background:rgba(255,255,255,.03);
+      padding:14px;
+      margin-bottom:14px;
+      text-align:left;
+    }
+    .label{
+      color:#00d4ff;
+      font-size:12px;
+      margin-bottom:6px;
+    }
+    .value{
+      color:#fff;
+      font-size:15px;
+      word-break:break-word;
+    }
+    input, textarea{
+      width:100%;
+      box-sizing:border-box;
+      margin-top:6px;
+      padding:12px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.18);
+      background:rgba(0,0,0,.45);
+      color:#fff;
+      font-family:monospace;
+      font-size:14px;
+    }
+    button{
+      width:100%;
+      padding:14px 16px;
+      border-radius:12px;
+      border:none;
+      background:#00d4ff;
+      color:#000;
+      font-family:monospace;
+      font-weight:bold;
+      margin-top:10px;
+    }
+    .btn2{
+      background:rgba(255,255,255,.06);
+      color:#fff;
+      border:1px solid rgba(255,255,255,.18);
+    }
+    #status{
+      margin-top:12px;
+      min-height:24px;
+      color:#a8ff3e;
+      white-space:pre-line;
+    }
+    a{
+      color:#888;
+      text-decoration:none;
+    }
+  </style>
 </head>
-
 <body>
+  <div class="wrap">
+    <h1>ADMIN PAYOUT</h1>
+    <div class="sub">Open this page inside Phantom browser with the treasury wallet selected</div>
 
-<div class="box">
+    <div class="box">
+      <div class="label">TREASURY WALLET</div>
+      <div class="value" id="treasuryWallet">8UH2aQubZ5kjR5PpesoPio4zkAfafoMY5hHuKrPYz6ct</div>
+    </div>
 
-<h2>ADMIN PAYOUT</h2>
+    <div class="box">
+      <div class="label">WEEK</div>
+      <div class="value" id="weekKey">Loading...</div>
+    </div>
 
-<div id="winner"></div>
-<div id="amount"></div>
+    <div class="box">
+      <div class="label">WINNER WALLET</div>
+      <div class="value" id="winnerWallet">Loading...</div>
+      <button class="btn2" id="copyWalletBtn" type="button">COPY WINNER WALLET</button>
+    </div>
 
-<button id="send">SEND PRIZE</button>
+    <div class="box">
+      <div class="label">AMOUNT</div>
+      <div class="value" id="amountSol">Loading...</div>
+    </div>
 
-<div id="status"></div>
+    <div class="box">
+      <div class="label">STATUS</div>
+      <div class="value" id="payoutStatus">Loading...</div>
+    </div>
 
-</div>
+    <div class="box">
+      <div class="label">ADMIN SECRET</div>
+      <input id="adminSecret" type="password" placeholder="Enter admin secret">
+    </div>
 
-<script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.js"></script>
+    <button id="sendPrizeBtn" type="button">SEND PRIZE</button>
 
-<script>
+    <div id="status"></div>
 
-const TREASURY="8UH2aQubZ5kjR5PpesoPio4zkAfafoMY5hHuKrPYz6ct"
+    <div style="margin-top:18px;">
+      <a href="index.html">Back Home</a>
+    </div>
+  </div>
 
-const sendBtn=document.getElementById("send")
-const status=document.getElementById("status")
+  <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.js"></script>
+  <script>
+    const TREASURY = "8UH2aQubZ5kjR5PpesoPio4zkAfafoMY5hHuKrPYz6ct";
 
-function setStatus(t){
-status.textContent=t
-}
+    let currentWeekKey = "";
+    let winnerWallet = "";
+    let amountLamports = 0;
 
-function getProvider(){
-if(window.phantom?.solana) return window.phantom.solana
-if(window.solana) return window.solana
-return null
-}
+    function setStatus(text, isError = false) {
+      const el = document.getElementById("status");
+      el.style.color = isError ? "#ff6b6b" : "#a8ff3e";
+      el.textContent = text || "";
+    }
 
-let winnerWallet=""
-let amountLamports=0
+    function getProvider() {
+      if (window.phantom?.solana) return window.phantom.solana;
+      if (window.solana?.isPhantom) return window.solana;
+      if (window.solana) return window.solana;
+      return null;
+    }
 
-async function load(){
+    async function loadPayoutStatus() {
+      setStatus("Loading payout...");
 
-const r=await fetch("/api/payout-status")
-const j=await r.json()
+      try {
+        const r = await fetch("/api/payout-status");
+        const j = await r.json();
 
-winnerWallet=j.winner_wallet
-amountLamports=j.amount_lamports
+        if (!r.ok || !j.ok) {
+          throw new Error(j.error || "Failed to load payout");
+        }
 
-document.getElementById("winner").innerText="Winner: "+winnerWallet
-document.getElementById("amount").innerText="Amount: "+(j.amount_sol)+" SOL"
+        currentWeekKey = String(j.week_key || "");
+        winnerWallet = String(j.winner_wallet || "");
+        amountLamports = Number(j.amount_lamports || 0);
 
-}
+        document.getElementById("weekKey").textContent = currentWeekKey || "N/A";
+        document.getElementById("winnerWallet").textContent = winnerWallet || "N/A";
+        document.getElementById("amountSol").textContent = `${Number(j.amount_sol || 0).toFixed(3)} SOL`;
+        document.getElementById("payoutStatus").textContent = j.status || "unknown";
 
-async function send(){
+        if (j.status === "sent" && j.tx_signature) {
+          setStatus(`Already sent.\nTX: ${j.tx_signature}`);
+        } else {
+          setStatus("Payout is pending.");
+        }
+      } catch (e) {
+        setStatus(String(e.message || e), true);
+      }
+    }
 
-const provider=getProvider()
+    document.getElementById("copyWalletBtn").onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(winnerWallet || "");
+        setStatus("Winner wallet copied.");
+      } catch {
+        setStatus("Could not copy wallet.", true);
+      }
+    };
 
-if(!provider){
-alert("Open in Phantom browser")
-return
-}
+    async function sendPrize() {
+      const adminSecret = document.getElementById("adminSecret").value.trim();
 
-await provider.connect()
+      if (!adminSecret) {
+        setStatus("Admin secret required.", true);
+        return;
+      }
 
-const connection=new solanaWeb3.Connection(
-solanaWeb3.clusterApiUrl("mainnet-beta")
-)
+      if (!winnerWallet) {
+        setStatus("Winner wallet missing.", true);
+        return;
+      }
 
-const tx=new solanaWeb3.Transaction().add(
+      if (!amountLamports || amountLamports <= 0) {
+        setStatus("Invalid payout amount.", true);
+        return;
+      }
 
-solanaWeb3.SystemProgram.transfer({
+      const provider = getProvider();
+      if (!provider) {
+        setStatus("Open this page inside Phantom browser.", true);
+        return;
+      }
 
-fromPubkey:provider.publicKey,
-toPubkey:new solanaWeb3.PublicKey(winnerWallet),
-lamports:amountLamports
+      const btn = document.getElementById("sendPrizeBtn");
+      btn.disabled = true;
+      btn.textContent = "CONNECTING...";
 
-})
+      try {
+        const connected = await provider.connect();
+        const connectedWallet = String((connected?.publicKey || provider.publicKey || "").toString());
 
-)
+        if (connectedWallet !== TREASURY) {
+          throw new Error("Connected Phantom wallet is not the treasury wallet.");
+        }
 
-tx.feePayer=provider.publicKey
-tx.recentBlockhash=(await connection.getLatestBlockhash()).blockhash
+        btn.textContent = "PREPARING...";
+        const connection = new solanaWeb3.Connection(
+          `${location.origin}/api/solana-rpc`,
+          "confirmed"
+        );
 
-setStatus("Waiting Phantom approval...")
+        const latest = await connection.getLatestBlockhash("confirmed");
 
-const {signature}=await provider.signAndSendTransaction(tx)
+        const tx = new solanaWeb3.Transaction().add(
+          solanaWeb3.SystemProgram.transfer({
+            fromPubkey: provider.publicKey,
+            toPubkey: new solanaWeb3.PublicKey(winnerWallet),
+            lamports: amountLamports
+          })
+        );
 
-await connection.confirmTransaction(signature)
+        tx.feePayer = provider.publicKey;
+        tx.recentBlockhash = latest.blockhash;
 
-setStatus("Prize sent")
+        btn.textContent = "WAITING FOR APPROVAL...";
+        const sendResult = await provider.signAndSendTransaction(tx);
+        const signature =
+          typeof sendResult === "string"
+            ? sendResult
+            : sendResult.signature;
 
-await fetch("/api/mark-payout-sent",{
+        if (!signature) {
+          throw new Error("No transaction signature returned");
+        }
 
-method:"POST",
-headers:{"Content-Type":"application/json"},
+        btn.textContent = "CONFIRMING...";
+        await connection.confirmTransaction(
+          {
+            signature,
+            blockhash: latest.blockhash,
+            lastValidBlockHeight: latest.lastValidBlockHeight
+          },
+          "confirmed"
+        );
 
-body:JSON.stringify({
+        btn.textContent = "SAVING...";
+        const r = await fetch("/api/mark-payout-sent", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            week_key: currentWeekKey,
+            tx_signature: signature,
+            admin_secret: adminSecret
+          })
+        });
 
-week_key:"auto",
-tx_signature:signature
+        const j = await r.json();
 
-})
+        if (!r.ok || !j.ok) {
+          throw new Error(j.error || "Transaction sent but payout record update failed");
+        }
 
-})
+        setStatus(`Prize sent successfully.\nTX: ${signature}`);
+        await loadPayoutStatus();
+      } catch (e) {
+        setStatus(String(e.message || e), true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "SEND PRIZE";
+      }
+    }
 
-}
+    document.getElementById("sendPrizeBtn").onclick = sendPrize;
 
-sendBtn.onclick=send
-
-load()
-
-</script>
-
+    loadPayoutStatus();
+  </script>
 </body>
 </html>
