@@ -1,8 +1,9 @@
 // NEON WORLD '99 — CLEAN GAME.JS (Stable)
-// Music (city-based), Background (city-based), SFX (hit/miss/combo), Unlocks, Submit Score
+// Music (city-based), Background (city-based), SFX (hit/miss/combo), Unlocks, Submit Score, Share Score
 
 // ---------------- CONFIG ----------------
 const GAME_SECONDS = 60;
+const SITE_URL = "https://neon-world-99.vercel.app";
 
 // Unlock thresholds
 const UNLOCKS = [
@@ -266,11 +267,11 @@ function startGame() {
 
       <div style="margin-top:10px; display:flex; gap:10px; justify-content:center;">
         <button id="exit"
-          style="padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,.25); background:rgba(0,0,0,.4); color:#fff;">
+          style="padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,.25); background:rgba(0,0,0,.4); color:#fff; font-family:monospace;">
           BACK TO CITIES
         </button>
         <button id="playMusic"
-          style="padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,.25); background:rgba(0,0,0,.4); color:#fff;">
+          style="padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,.25); background:rgba(0,0,0,.4); color:#fff; font-family:monospace;">
           PLAY MUSIC
         </button>
       </div>
@@ -293,6 +294,92 @@ function startGame() {
 
   armMusicOnFirstTap();
   runMiniGame();
+}
+
+// ---------------- SHARE ----------------
+function buildShareText(finalScore, city, mode) {
+  const lines = [
+    `I scored ${finalScore} in Neon World '99 🎮`,
+    "",
+    `${mode === "ranked" ? "Ranked mode is live on Solana." : "Retro arcade rhythm on Solana."}`,
+    `City: ${city}`,
+    "Weekly jackpot is growing.",
+    "",
+    `Play now: ${SITE_URL}`
+  ];
+  return lines.join("\n");
+}
+
+function openShareScore(finalScore, city, mode) {
+  const text = buildShareText(finalScore, city, mode);
+  const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+  window.open(url, "_blank");
+}
+
+function showEndScreen(finalScore, unlocked, modeNow) {
+  applyBackground(currentCity);
+
+  document.body.innerHTML = `
+    <div style="text-align:center; padding:24px 16px 40px; color:#fff; font-family:monospace; min-height:100vh; box-sizing:border-box; backdrop-filter: blur(2px);">
+      <h1 style="color:#00d4ff; margin:10px 0 8px;">RUN COMPLETE</h1>
+
+      <div style="max-width:420px; margin:0 auto; border:1px solid rgba(255,255,255,.14); border-radius:14px; background:rgba(0,0,0,.45); padding:18px;">
+        <div style="color:rgba(255,255,255,.7); font-size:12px;">MODE</div>
+        <div style="font-size:24px; color:${modeNow === "ranked" ? "#ff2d6b" : "#a8ff3e"}; margin-bottom:14px;">
+          ${escapeHtml(modeNow.toUpperCase())}
+        </div>
+
+        <div style="color:rgba(255,255,255,.7); font-size:12px;">CITY</div>
+        <div style="font-size:22px; color:#fff; margin-bottom:14px;">
+          ${escapeHtml(currentCity)}
+        </div>
+
+        <div style="color:rgba(255,255,255,.7); font-size:12px;">SCORE</div>
+        <div style="font-size:32px; color:#ff2d6b; margin-bottom:14px;">
+          ${Number(finalScore)}
+        </div>
+
+        <div style="color:rgba(255,255,255,.7); font-size:12px;">BEST</div>
+        <div style="font-size:22px; color:#00d4ff; margin-bottom:14px;">
+          ${Number(bestScore)}
+        </div>
+
+        <div style="color:rgba(255,255,255,.7); font-size:12px;">UNLOCKED CITIES</div>
+        <div style="font-size:14px; color:#fff; line-height:1.5;">
+          ${escapeHtml(unlocked.join(", ") || "None")}
+        </div>
+      </div>
+
+      <div style="margin-top:18px; display:flex; flex-direction:column; gap:10px; align-items:center;">
+        <button id="shareScoreBtn"
+          style="width:100%; max-width:420px; padding:14px 16px; border-radius:12px; border:none; background:#00d4ff; color:#000; font-family:monospace; font-weight:bold;">
+          SHARE SCORE
+        </button>
+
+        <button id="playAgainBtn"
+          style="width:100%; max-width:420px; padding:14px 16px; border-radius:12px; border:1px solid rgba(255,255,255,.25); background:rgba(0,0,0,.4); color:#fff; font-family:monospace;">
+          PLAY AGAIN
+        </button>
+
+        <button id="homeBtn"
+          style="width:100%; max-width:420px; padding:14px 16px; border-radius:12px; border:1px solid rgba(255,255,255,.25); background:rgba(0,0,0,.4); color:#fff; font-family:monospace;">
+          HOME
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById("shareScoreBtn").onclick = () => {
+    openShareScore(finalScore, currentCity, modeNow);
+  };
+
+  document.getElementById("playAgainBtn").onclick = () => {
+    location.href = "/city.html";
+  };
+
+  document.getElementById("homeBtn").onclick = () => {
+    location.href = "/index.html";
+  };
 }
 
 // ---------------- GAME LOOP ----------------
@@ -466,9 +553,7 @@ function runMiniGame() {
       .filter((u) => bestScore >= u.need)
       .map((u) => u.name);
 
-    alert(`SCORE: ${finalScore}\nBEST: ${bestScore}\nUNLOCKED: ${unlocked.join(", ")}`);
-
-    location.href = "/city.html";
+    showEndScreen(finalScore, unlocked, getMode());
   }
 }
 
