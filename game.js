@@ -1,5 +1,5 @@
 // NEON WORLD '99 — CLEAN GAME.JS (Stable)
-// Music (city-based), Background (city-based), SFX (hit/miss/combo), Unlocks, Submit Score, Share Score
+// Music (city-based), Background (city-based), SFX (hit/miss/combo), Unlocks, Submit Score, Share Score, Anti-Cheat Run Tokens
 
 // ---------------- CONFIG ----------------
 const GAME_SECONDS = 60;
@@ -68,6 +68,7 @@ function setLocalPassUntil(v) {
 // ---------------- GLOBAL STATE ----------------
 let currentCity = "New York";
 let bestScore = loadBest();
+let currentRunToken = "";
 
 // ---------------- SFX ----------------
 const sHit = new Audio("/hit.mp3");
@@ -203,6 +204,37 @@ async function ensureRankedAccess() {
   }
 }
 
+// ---------------- RUN TOKEN ----------------
+async function createRunToken(cityName) {
+  const modeNow = getMode();
+  const wallet =
+    (modeNow === "ranked" ? (getWallet() || "") : "") || "guest";
+
+  const res = await fetch("/api/start-run", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      wallet,
+      mode: modeNow,
+      city: cityName,
+      country: getCountry()
+    })
+  });
+
+  let data = {};
+  try {
+    data = await res.json();
+  } catch {}
+
+  if (!res.ok || !data.ok || !data.run_token) {
+    throw new Error(data.error || "Failed to create run");
+  }
+
+  currentRunToken = String(data.run_token);
+}
+
 // ---------------- NAV HELPERS ----------------
 window.goFree = function () {
   localStorage.setItem("neon99_mode", "free");
@@ -241,6 +273,14 @@ window.city = async function (name) {
 
   stopMusic();
   currentCity = name;
+
+  try {
+    await createRunToken(name);
+  } catch (e) {
+    alert("Could not start run:\n" + String(e.message || e));
+    return;
+  }
+
   startGame();
 };
 
@@ -586,6 +626,7 @@ function runMiniGame() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           wallet,
+          run_token: currentRunToken,
           score: Number(finalScore),
           city: currentCity,
           country: getCountry(),
