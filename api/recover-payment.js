@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 
 import { Connection, PublicKey } from "@solana/web3.js";
-import { supa, nowMs } from "./_db.js";
+import { supa, nowMs, currentWeekKey } from "./_db.js";
 
 export default async function handler(req, res) {
   try {
@@ -183,6 +183,36 @@ export default async function handler(req, res) {
           error: insertError.message || "Failed to create user"
         });
       }
+    }
+
+    const weekKey = currentWeekKey();
+    const jackpotLamports = 3000000; // 0.003 SOL
+
+    const { data: existingJackpot } = await db
+      .from("weekly_jackpots")
+      .select("id, total_lamports, entry_count")
+      .eq("week_key", weekKey)
+      .maybeSingle();
+
+    if (existingJackpot) {
+      await db
+        .from("weekly_jackpots")
+        .update({
+          total_lamports: Number(existingJackpot.total_lamports || 0) + jackpotLamports,
+          entry_count: Number(existingJackpot.entry_count || 0) + 1,
+          updated_at: new Date().toISOString()
+        })
+        .eq("week_key", weekKey);
+    } else {
+      await db
+        .from("weekly_jackpots")
+        .insert({
+          week_key: weekKey,
+          total_lamports: jackpotLamports,
+          entry_count: 1,
+          status: "open",
+          updated_at: new Date().toISOString()
+        });
     }
 
     return res.status(200).json({
