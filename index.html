@@ -1,38 +1,80 @@
 <!DOCTYPE html>
 <html>
-
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NEON WORLD '99</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NEON WORLD '99</title>
 
-<link rel="stylesheet" href="styles.css">
-
+  <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
 
-<div style="text-align:center;margin-top:120px;font-family:monospace;color:#00d4ff">
+  <div style="text-align:center;margin-top:120px;font-family:monospace;color:#00d4ff">
+    <h1>NEON WORLD '99</h1>
 
-<h1>NEON WORLD '99</h1>
+    <p>INSERT COIN</p>
 
-<p>INSERT COIN</p>
+    <div
+      id="jackpotBox"
+      style="
+        margin:18px auto 26px auto;
+        max-width:360px;
+        padding:12px 14px;
+        border:1px solid rgba(0,212,255,.35);
+        border-radius:12px;
+        color:#ffffff;
+        background:rgba(0,212,255,.08);
+        font-size:14px;
+        line-height:1.6;
+      "
+    >
+      <div style="color:#00d4ff;font-weight:bold;">WEEKLY JACKPOT</div>
+      <div id="jackpotAmount">Loading...</div>
+      <div id="jackpotEntries" style="color:rgba(255,255,255,.7);font-size:12px;"></div>
+    </div>
 
-<br>
+    <button onclick="goFree()">START GAME</button>
 
-<button onclick="goFree()">START GAME</button>
+    <br><br>
 
-<br><br>
+    <button onclick="location.href='ranked.html'">RANKED MODE (0.01 SOL)</button>
 
-<button onclick="location.href='ranked.html'">RANKED MODE (0.01 SOL)</button>
+    <br><br>
 
-<br><br>
+    <button onclick="goBoard()">LEADERBOARD</button>
+  </div>
 
-<button onclick="goBoard()">LEADERBOARD</button>
+  <script>
+    async function loadJackpot() {
+      const amountEl = document.getElementById("jackpotAmount");
+      const entriesEl = document.getElementById("jackpotEntries");
 
-</div>
+      try {
+        const r = await fetch("/api/jackpot");
+        const j = await r.json();
 
-<script src="game.js"></script>
+        if (!r.ok || !j.ok) {
+          amountEl.textContent = "Unavailable";
+          entriesEl.textContent = "";
+          return;
+        }
+
+        const totalSol = Number(j.total_sol || 0);
+        const entryCount = Number(j.entry_count || 0);
+        const weekKey = String(j.week_key || "");
+
+        amountEl.textContent = `${totalSol.toFixed(3)} SOL`;
+        entriesEl.textContent = `${entryCount} ranked entries • ${weekKey}`;
+      } catch (e) {
+        amountEl.textContent = "Unavailable";
+        entriesEl.textContent = "";
+      }
+    }
+
+    loadJackpot();
+  </script>
+
+  <script src="game.js"></script>
 
 </body>
-
 </html>
