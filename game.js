@@ -1,5 +1,5 @@
-// NEON WORLD '99 — CLEAN GAME.JS (Stable)
-// Music (city-based), Background (city-based), SFX (hit/miss/combo), Unlocks, Submit Score, Share Score, Anti-Cheat Run Tokens
+// NEON WORLD '99 — FINAL GAME.JS
+// Ranked pass, anti-cheat run token, share score, jackpot share, result screen
 
 // ---------------- CONFIG ----------------
 const GAME_SECONDS = 60;
