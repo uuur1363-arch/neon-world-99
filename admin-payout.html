@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADMIN PAYOUT</title>
+
+<style>
+body{
+background:black;
+color:white;
+font-family:monospace;
+text-align:center;
+padding:40px 20px;
+}
+
+.box{
+max-width:420px;
+margin:0 auto;
+border:1px solid rgba(255,255,255,.2);
+padding:20px;
+border-radius:12px;
+}
+
+button{
+width:100%;
+padding:14px;
+margin-top:10px;
+border-radius:10px;
+border:none;
+background:#00d4ff;
+font-weight:bold;
+}
+
+#status{
+margin-top:10px;
+min-height:30px;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="box">
+
+<h2>ADMIN PAYOUT</h2>
+
+<div id="winner"></div>
+<div id="amount"></div>
+
+<button id="send">SEND PRIZE</button>
+
+<div id="status"></div>
+
+</div>
+
+<script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.js"></script>
+
+<script>
+
+const TREASURY="8UH2aQubZ5kjR5PpesoPio4zkAfafoMY5hHuKrPYz6ct"
+
+const sendBtn=document.getElementById("send")
+const status=document.getElementById("status")
+
+function setStatus(t){
+status.textContent=t
+}
+
+function getProvider(){
+if(window.phantom?.solana) return window.phantom.solana
+if(window.solana) return window.solana
+return null
+}
+
+let winnerWallet=""
+let amountLamports=0
+
+async function load(){
+
+const r=await fetch("/api/payout-status")
+const j=await r.json()
+
+winnerWallet=j.winner_wallet
+amountLamports=j.amount_lamports
+
+document.getElementById("winner").innerText="Winner: "+winnerWallet
+document.getElementById("amount").innerText="Amount: "+(j.amount_sol)+" SOL"
+
+}
+
+async function send(){
+
+const provider=getProvider()
+
+if(!provider){
+alert("Open in Phantom browser")
+return
+}
+
+await provider.connect()
+
+const connection=new solanaWeb3.Connection(
+solanaWeb3.clusterApiUrl("mainnet-beta")
+)
+
+const tx=new solanaWeb3.Transaction().add(
+
+solanaWeb3.SystemProgram.transfer({
+
+fromPubkey:provider.publicKey,
+toPubkey:new solanaWeb3.PublicKey(winnerWallet),
+lamports:amountLamports
+
+})
+
+)
+
+tx.feePayer=provider.publicKey
+tx.recentBlockhash=(await connection.getLatestBlockhash()).blockhash
+
+setStatus("Waiting Phantom approval...")
+
+const {signature}=await provider.signAndSendTransaction(tx)
+
+await connection.confirmTransaction(signature)
+
+setStatus("Prize sent")
+
+await fetch("/api/mark-payout-sent",{
+
+method:"POST",
+headers:{"Content-Type":"application/json"},
+
+body:JSON.stringify({
+
+week_key:"auto",
+tx_signature:signature
+
+})
+
+})
+
+}
+
+sendBtn.onclick=send
+
+load()
+
+</script>
+
+</body>
+</html>
