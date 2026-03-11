@@ -1,90 +1,282 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Leaderboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NEON WORLD '99 — LEADERBOARD</title>
+  <style>
+    body{
+      margin:0;
+      padding:24px 14px 40px;
+      background:#000;
+      color:#fff;
+      font-family:monospace;
+      text-align:center;
+    }
+
+    .wrap{
+      max-width:720px;
+      margin:0 auto;
+    }
+
+    h1{
+      color:#00d4ff;
+      margin:10px 0 6px;
+    }
+
+    .sub{
+      color:rgba(255,255,255,.7);
+      font-size:13px;
+      margin-bottom:18px;
+    }
+
+    .stats{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:10px;
+      margin-bottom:18px;
+    }
+
+    .box{
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:12px;
+      background:rgba(255,255,255,.03);
+      padding:12px;
+    }
+
+    .boxTitle{
+      color:#00d4ff;
+      font-size:13px;
+      margin-bottom:6px;
+      font-weight:bold;
+    }
+
+    .boxText{
+      color:#fff;
+      font-size:15px;
+    }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+      background:rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:12px;
+      overflow:hidden;
+    }
+
+    th, td{
+      padding:10px 8px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      font-size:13px;
+    }
+
+    th{
+      color:#00d4ff;
+      background:rgba(0,212,255,.06);
+    }
+
+    tr:last-child td{
+      border-bottom:none;
+    }
+
+    .rank{
+      color:#a8ff3e;
+      font-weight:bold;
+    }
+
+    .wallet{
+      color:#fff;
+    }
+
+    .score{
+      color:#ff2d6b;
+      font-weight:bold;
+    }
+
+    .muted{
+      color:rgba(255,255,255,.65);
+    }
+
+    .top3{
+      margin-bottom:16px;
+      display:grid;
+      gap:10px;
+    }
+
+    .medal{
+      border-radius:12px;
+      padding:12px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.04);
+    }
+
+    .gold{ border-color:rgba(255,215,0,.35); }
+    .silver{ border-color:rgba(192,192,192,.35); }
+    .bronze{ border-color:rgba(205,127,50,.35); }
+
+    a, button{
+      color:#888;
+      text-decoration:none;
+    }
+
+    .actions{
+      margin-top:18px;
+      display:flex;
+      justify-content:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .btn{
+      padding:10px 14px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.2);
+      background:rgba(255,255,255,.04);
+      color:#fff;
+      font-family:monospace;
+    }
+  </style>
 </head>
+<body>
+  <div class="wrap">
+    <h1>GLOBAL LEADERBOARD</h1>
+    <div class="sub">Top ranked players in Neon World '99</div>
 
-<body style="background:black;color:white;font-family:monospace;padding:16px;">
-
-<div id="jackpot" style="
-padding:12px;
-border:1px solid rgba(255,255,255,.2);
-border-radius:10px;
-margin-bottom:20px;
-font-size:14px;
-">
-LOADING JACKPOT...
-</div>
-
-<h2>🌍 COUNTRY WAR</h2>
-<div id="countries">Loading...</div>
-
-<br><br>
-
-<h2>🏆 GLOBAL LEADERBOARD</h2>
-<div id="players">Loading...</div>
-
-<script>
-function flagEmoji(cc){
-  if(!cc) return "🏳️";
-  const s = cc.toUpperCase();
-  const A = 0x1F1E6;
-  const code = c => A + (c.charCodeAt(0)-65);
-  if(s.length !== 2) return "🏳️";
-  return String.fromCodePoint(code(s[0]), code(s[1]));
-}
-
-async function load(){
-
-  // JACKPOT yükleme
-  const jr = await fetch("/api/jackpot");
-  const jj = await jr.json();
-
-  if(jj.ok){
-    document.getElementById("jackpot").innerHTML =
-      `💰 WEEKLY JACKPOT: <b>${jj.pool_sol} SOL</b><br>
-       🎟 Entries: ${jj.entries}<br>
-       📅 ${jj.week_key}`;
-  }
-
-  // SCORE verisi
-  const r = await fetch("/api/score");
-  const j = await r.json();
-
-  if(!j.ok){
-    document.body.innerHTML = "error";
-    return;
-  }
-
-  // COUNTRY WAR
-  let chtml = "";
-  (j.countries || []).forEach((c,i)=>{
-    chtml += `
-    <div style="display:flex;justify-content:space-between;padding:6px 0">
-      <div>#${i+1} ${flagEmoji(c.country)} ${c.country}</div>
-      <div>${c.score}</div>
+    <div class="stats">
+      <div class="box">
+        <div class="boxTitle">CURRENT WEEKLY JACKPOT</div>
+        <div class="boxText" id="jackpotText">Loading...</div>
+      </div>
     </div>
-    `;
-  });
-  document.getElementById("countries").innerHTML = chtml || "No country data yet.";
 
-  // PLAYER leaderboard
-  let phtml = "";
-  (j.top || []).forEach((u,i)=>{
-    let w = u.wallet.slice(0,6) + "..." + u.wallet.slice(-4);
-    phtml += `
-    <div style="display:flex;justify-content:space-between;padding:6px 0">
-      <div>#${i+1} ${flagEmoji(u.country)} ${w}</div>
-      <div>${u.best_score}</div>
+    <div class="top3" id="top3"></div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Wallet</th>
+          <th>Score</th>
+          <th>City</th>
+          <th>Country</th>
+        </tr>
+      </thead>
+      <tbody id="leaderRows">
+        <tr>
+          <td colspan="5" class="muted">Loading leaderboard...</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="actions">
+      <button class="btn" onclick="location.href='index.html'">HOME</button>
+      <button class="btn" onclick="location.href='ranked.html'">PLAY RANKED</button>
     </div>
-    `;
-  });
-  document.getElementById("players").innerHTML = phtml || "No player data yet.";
-}
+  </div>
 
-load();
-</script>
+  <script>
+    function shortWallet(w) {
+      const s = String(w || "");
+      if (!s) return "N/A";
+      if (s.length <= 12) return s;
+      return s.slice(0, 4) + "..." + s.slice(-4);
+    }
 
+    function medalClass(rank) {
+      if (rank === 1) return "gold";
+      if (rank === 2) return "silver";
+      if (rank === 3) return "bronze";
+      return "";
+    }
+
+    function medalEmoji(rank) {
+      if (rank === 1) return "🥇";
+      if (rank === 2) return "🥈";
+      if (rank === 3) return "🥉";
+      return "•";
+    }
+
+    async function loadJackpot() {
+      const el = document.getElementById("jackpotText");
+
+      try {
+        const r = await fetch("/api/weekly-winner");
+        const j = await r.json();
+
+        if (!r.ok || !j.ok) {
+          el.textContent = "Unavailable";
+          return;
+        }
+
+        el.textContent = `${Number(j.jackpot_sol || 0).toFixed(3)} SOL • ${Number(j.entry_count || 0)} entries`;
+      } catch (_) {
+        el.textContent = "Unavailable";
+      }
+    }
+
+    async function loadLeaderboard() {
+      const tbody = document.getElementById("leaderRows");
+      const top3 = document.getElementById("top3");
+
+      try {
+        const r = await fetch("/api/global-leaderboard?limit=20");
+        const j = await r.json();
+
+        if (!r.ok || !j.ok) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="5" class="muted">Leaderboard unavailable</td>
+            </tr>
+          `;
+          top3.innerHTML = "";
+          return;
+        }
+
+        const items = Array.isArray(j.items) ? j.items : [];
+
+        if (!items.length) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="5" class="muted">No ranked scores yet</td>
+            </tr>
+          `;
+          top3.innerHTML = "";
+          return;
+        }
+
+        top3.innerHTML = items.slice(0, 3).map(item => `
+          <div class="medal ${medalClass(item.rank)}">
+            <div>${medalEmoji(item.rank)} #${item.rank}</div>
+            <div style="margin-top:4px;color:#fff;font-weight:bold;">${shortWallet(item.wallet)}</div>
+            <div style="margin-top:4px;color:#ff2d6b;">${Number(item.score || 0)} pts</div>
+            <div style="margin-top:4px;color:rgba(255,255,255,.7);font-size:12px;">
+              ${item.city || "Unknown"} • ${item.country || ""}
+            </div>
+          </div>
+        `).join("");
+
+        tbody.innerHTML = items.map(item => `
+          <tr>
+            <td class="rank">#${item.rank}</td>
+            <td class="wallet">${shortWallet(item.wallet)}</td>
+            <td class="score">${Number(item.score || 0)}</td>
+            <td>${item.city || "-"}</td>
+            <td>${item.country || "-"}</td>
+          </tr>
+        `).join("");
+
+      } catch (_) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" class="muted">Leaderboard unavailable</td>
+          </tr>
+        `;
+        top3.innerHTML = "";
+      }
+    }
+
+    loadJackpot();
+    loadLeaderboard();
+  </script>
 </body>
 </html>
