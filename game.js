@@ -4,7 +4,7 @@
 // ---------------- CONFIG ----------------
 const GAME_SECONDS = 60;
 
-// Unlock thresholds (edit whenever you want)
+// Unlock thresholds
 const UNLOCKS = [
   { name: "New York", need: 0 },
   { name: "Tokyo", need: 10000 },
@@ -27,15 +27,21 @@ function loadBest() {
     return 0;
   }
 }
+
 function saveBest(v) {
-  try { localStorage.setItem("neon99_best", String(v)); } catch {}
+  try {
+    localStorage.setItem("neon99_best", String(v));
+  } catch {}
 }
+
 function getMode() {
   return localStorage.getItem("neon99_mode") || "free";
 }
+
 function getCountry() {
   return localStorage.getItem("neon99_country") || "TR";
 }
+
 function getWallet() {
   try {
     return localStorage.getItem("neon99_wallet") || "";
@@ -43,6 +49,7 @@ function getWallet() {
     return "";
   }
 }
+
 function getLocalPassUntil() {
   try {
     return parseInt(localStorage.getItem("neon99_pass_until") || "0", 10);
@@ -50,6 +57,7 @@ function getLocalPassUntil() {
     return 0;
   }
 }
+
 function setLocalPassUntil(v) {
   try {
     localStorage.setItem("neon99_pass_until", String(Number(v) || 0));
@@ -85,14 +93,21 @@ function musicForCity(city) {
 
 function startMusicGesture() {
   if (bgmStarted) return;
+
   try {
     stopMusic();
     bgm = new Audio(musicForCity(currentCity));
     bgm.loop = true;
     bgm.volume = 0.4;
+
     const p = bgm.play();
     bgmStarted = true;
-    if (p && p.catch) p.catch(() => { bgmStarted = false; });
+
+    if (p && p.catch) {
+      p.catch(() => {
+        bgmStarted = false;
+      });
+    }
   } catch {
     bgmStarted = false;
   }
@@ -106,6 +121,7 @@ function stopMusic() {
       bgm = null;
     }
   } catch {}
+
   bgmStarted = false;
 }
 
@@ -130,7 +146,7 @@ function applyBackground(city) {
   document.body.style.backgroundRepeat = "no-repeat";
 }
 
-// ---------------- RANKED LOCK ----------------
+// ---------------- RANKED ACCESS ----------------
 function rankedLocked() {
   if (getMode() !== "ranked") return false;
   const pu = getLocalPassUntil();
@@ -181,12 +197,12 @@ async function ensureRankedAccess() {
   try {
     const passInfo = await fetchRankedPassFromServer();
     return !!(passInfo.ok && passInfo.pass && Date.now() < Number(passInfo.pass_until || 0));
-  } catch (e) {
+  } catch {
     return !rankedLocked();
   }
 }
 
-// ---------------- NAV HELPERS (buttons in index.html) ----------------
+// ---------------- NAV HELPERS ----------------
 window.goFree = function () {
   localStorage.setItem("neon99_mode", "free");
   location.href = "/city.html";
@@ -201,7 +217,7 @@ window.goBoard = function () {
   location.href = "/board.html";
 };
 
-// ---------------- CITY SELECT (called from city.html) ----------------
+// ---------------- CITY SELECT ----------------
 window.city = async function (name) {
   if (getMode() === "ranked") {
     const hasAccess = await ensureRankedAccess();
@@ -297,35 +313,51 @@ function runMiniGame() {
   let spawnAcc = 0;
 
   let sx = null;
-  cv.addEventListener("touchstart", (e) => { sx = e.touches[0].clientX; }, { passive: true });
+  cv.addEventListener("touchstart", (e) => {
+    sx = e.touches[0].clientX;
+  }, { passive: true });
+
   cv.addEventListener("touchmove", (e) => {
     if (sx == null) return;
     const x = e.touches[0].clientX;
     const dx = x - sx;
+
     if (Math.abs(dx) > 30) {
       bpm = clamp(bpm + (dx > 0 ? 6 : -6), 80, 170);
       sx = x;
     }
   }, { passive: true });
-  cv.addEventListener("touchend", () => { sx = null; }, { passive: true });
+
+  cv.addEventListener("touchend", () => {
+    sx = null;
+  }, { passive: true });
 
   cv.addEventListener("click", onTap);
 
   let holdTimer = null;
   cv.addEventListener("mousedown", () => {
-    holdTimer = setTimeout(() => { reverse = true; flash("REVERSE"); }, 220);
+    holdTimer = setTimeout(() => {
+      reverse = true;
+      flash("REVERSE");
+    }, 220);
   });
+
   const holdEnd = () => {
     if (holdTimer) clearTimeout(holdTimer);
     holdTimer = null;
     reverse = false;
   };
+
   cv.addEventListener("mouseup", holdEnd);
   cv.addEventListener("mouseleave", holdEnd);
 
   let msg = "";
   let msgT = 0;
-  function flash(s) { msg = s; msgT = 0.8; }
+
+  function flash(s) {
+    msg = s;
+    msgT = 0.8;
+  }
 
   function onTap() {
     startMusicGesture();
@@ -341,7 +373,6 @@ function runMiniGame() {
 
       playSfx(sHit);
       if (combo % 10 === 0) playSfx(sCombo);
-
     } else {
       combo = Math.max(0, combo - 2);
       score = Math.max(0, score - 80);
@@ -352,6 +383,7 @@ function runMiniGame() {
   }
 
   let last = performance.now();
+
   function loop(now) {
     const dt = Math.min(0.033, (now - last) / 1000);
     last = now;
@@ -363,10 +395,15 @@ function runMiniGame() {
     spawnAcc += bps * dt;
     if (spawnAcc >= 1) {
       spawnAcc -= 1;
-      notes.push({ y: -20, speed: 180 + (bpm - 110) * 1.2 });
+      notes.push({
+        y: -20,
+        speed: 180 + (bpm - 110) * 1.2
+      });
     }
 
-    for (const n of notes) n.y += (reverse ? -1 : 1) * n.speed * dt;
+    for (const n of notes) {
+      n.y += (reverse ? -1 : 1) * n.speed * dt;
+    }
 
     const hitY = H * 0.78;
     for (let i = notes.length - 1; i >= 0; i--) {
@@ -375,7 +412,9 @@ function runMiniGame() {
         combo = Math.max(0, combo - 3);
         score = Math.max(0, score - 120);
       }
-      if (notes[i] && notes[i].y < -80) notes.splice(i, 1);
+      if (notes[i] && notes[i].y < -80) {
+        notes.splice(i, 1);
+      }
     }
 
     const tempoBonus = Math.max(0, 1 - Math.abs(120 - bpm) / 40);
@@ -386,14 +425,17 @@ function runMiniGame() {
     document.getElementById("t").textContent = String(Math.ceil(tLeft));
     document.getElementById("s").textContent = String(score | 0);
     document.getElementById("c").textContent = `x${combo}`;
+
     if (msgT > 0) msgT -= dt;
 
     if (tLeft <= 0) {
       end(score | 0);
       return;
     }
+
     requestAnimationFrame(loop);
   }
+
   requestAnimationFrame(loop);
 
   function end(finalScore) {
@@ -420,7 +462,10 @@ function runMiniGame() {
       }).catch(() => {});
     } catch {}
 
-    const unlocked = UNLOCKS.filter((u) => bestScore >= u.need).map((u) => u.name);
+    const unlocked = UNLOCKS
+      .filter((u) => bestScore >= u.need)
+      .map((u) => u.name);
+
     alert(`SCORE: ${finalScore}\nBEST: ${bestScore}\nUNLOCKED: ${unlocked.join(", ")}`);
 
     location.href = "/city.html";
@@ -430,6 +475,7 @@ function runMiniGame() {
 // ---------------- DRAW ----------------
 function draw(ctx, W, H, bpm, reverse, notes, msg, msgT) {
   ctx.clearRect(0, 0, W, H);
+
   ctx.fillStyle = "rgba(0,0,0,0.45)";
   ctx.fillRect(0, 0, W, H);
 
@@ -470,9 +516,18 @@ function draw(ctx, W, H, bpm, reverse, notes, msg, msgT) {
   }
 }
 
-function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+function clamp(v, a, b) {
+  return Math.max(a, Math.min(b, v));
+}
+
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (m) => {
-    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m];
+    return {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "\"": "&quot;",
+      "'": "&#39;"
+    }[m];
   });
 }
