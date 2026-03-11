@@ -15,12 +15,18 @@ export default async function handler(req, res) {
     const country = String(body.country || "TR").trim();
     const mode = String(body.mode || "free").trim();
 
-    if (!Number.isFinite(score) || score < 0) {
-      return res.status(400).json({ ok: false, error: "valid score required" });
+    if (!wallet) {
+      return res.status(400).json({
+        ok: false,
+        error: "wallet required"
+      });
     }
 
-    if (!wallet) {
-      return res.status(400).json({ ok: false, error: "wallet required" });
+    if (!Number.isFinite(score) || score < 0) {
+      return res.status(400).json({
+        ok: false,
+        error: "valid score required"
+      });
     }
 
     const db = supa();
@@ -33,12 +39,15 @@ export default async function handler(req, res) {
       .maybeSingle();
 
     if (userError) {
-      return res.status(500).json({ ok: false, error: userError.message || "Failed to read user" });
+      return res.status(500).json({
+        ok: false,
+        error: userError.message || "Failed to read user"
+      });
     }
 
-    // ranked skor için aktif pass şart
     if (mode === "ranked") {
       const passUntil = Number(user?.pass_until || 0);
+
       if (!user || passUntil <= now) {
         return res.status(403).json({
           ok: false,
@@ -65,7 +74,7 @@ export default async function handler(req, res) {
         });
       }
     } else {
-      const { error: insertError } = await db
+      const { error: insertUserError } = await db
         .from("users")
         .insert({
           wallet,
@@ -74,17 +83,17 @@ export default async function handler(req, res) {
           created_at: now
         });
 
-      if (insertError) {
+      if (insertUserError) {
         return res.status(500).json({
           ok: false,
-          error: insertError.message || "Failed to create user"
+          error: insertUserError.message || "Failed to create user"
         });
       }
     }
 
-    // skor geçmişi/log tablon varsa yaz, yoksa sessiz geç
-    try {
-      await db.from("scores").insert({
+    const { error: scoreInsertError } = await db
+      .from("scores")
+      .insert({
         wallet,
         score,
         best_score: best,
@@ -93,7 +102,13 @@ export default async function handler(req, res) {
         mode,
         created_at: now
       });
-    } catch (_) {}
+
+    if (scoreInsertError) {
+      return res.status(500).json({
+        ok: false,
+        error: scoreInsertError.message || "Failed to save score history"
+      });
+    }
 
     return res.status(200).json({
       ok: true,
