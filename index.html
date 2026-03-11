@@ -16,8 +16,8 @@
     <div
       id="jackpotBox"
       style="
-        margin:18px auto 26px auto;
-        max-width:360px;
+        margin:18px auto 14px auto;
+        max-width:380px;
         padding:12px 14px;
         border:1px solid rgba(0,212,255,.35);
         border-radius:12px;
@@ -30,6 +30,25 @@
       <div style="color:#00d4ff;font-weight:bold;">WEEKLY JACKPOT</div>
       <div id="jackpotAmount">Loading...</div>
       <div id="jackpotEntries" style="color:rgba(255,255,255,.7);font-size:12px;"></div>
+    </div>
+
+    <div
+      id="leaderBox"
+      style="
+        margin:0 auto 26px auto;
+        max-width:380px;
+        padding:12px 14px;
+        border:1px solid rgba(255,45,107,.30);
+        border-radius:12px;
+        color:#ffffff;
+        background:rgba(255,45,107,.08);
+        font-size:14px;
+        line-height:1.6;
+      "
+    >
+      <div style="color:#ff2d6b;font-weight:bold;">CURRENT LEADER</div>
+      <div id="leaderWallet">Loading...</div>
+      <div id="leaderScore" style="color:rgba(255,255,255,.7);font-size:12px;"></div>
     </div>
 
     <button onclick="goFree()">START GAME</button>
@@ -49,33 +68,53 @@
       location.href = "ranked.html";
     }
 
-    async function loadJackpot() {
+    function shortWallet(w) {
+      const s = String(w || "");
+      if (s.length <= 12) return s;
+      return s.slice(0, 4) + "..." + s.slice(-4);
+    }
+
+    async function loadHomeStats() {
       const amountEl = document.getElementById("jackpotAmount");
       const entriesEl = document.getElementById("jackpotEntries");
+      const leaderWalletEl = document.getElementById("leaderWallet");
+      const leaderScoreEl = document.getElementById("leaderScore");
 
       try {
-        const r = await fetch("/api/jackpot");
+        const r = await fetch("/api/weekly-winner");
         const j = await r.json();
 
         if (!r.ok || !j.ok) {
           amountEl.textContent = "Unavailable";
           entriesEl.textContent = "";
+          leaderWalletEl.textContent = "Unavailable";
+          leaderScoreEl.textContent = "";
           return;
         }
 
-        const totalSol = Number(j.total_sol || 0);
+        const jackpotSol = Number(j.jackpot_sol || 0);
         const entryCount = Number(j.entry_count || 0);
         const weekKey = String(j.week_key || "");
 
-        amountEl.textContent = `${totalSol.toFixed(3)} SOL`;
+        amountEl.textContent = `${jackpotSol.toFixed(3)} SOL`;
         entriesEl.textContent = `${entryCount} ranked entries • ${weekKey}`;
+
+        if (j.leader_wallet) {
+          leaderWalletEl.textContent = shortWallet(j.leader_wallet);
+          leaderScoreEl.textContent = `TOP SCORE: ${Number(j.leader_score || 0)} • ${j.leader_city || "Unknown"}`;
+        } else {
+          leaderWalletEl.textContent = "No ranked scores yet";
+          leaderScoreEl.textContent = "Be the first leader this week";
+        }
       } catch (_) {
         amountEl.textContent = "Unavailable";
         entriesEl.textContent = "";
+        leaderWalletEl.textContent = "Unavailable";
+        leaderScoreEl.textContent = "";
       }
     }
 
-    loadJackpot();
+    loadHomeStats();
   </script>
 
   <script src="game.js"></script>
