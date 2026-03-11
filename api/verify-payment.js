@@ -1,5 +1,7 @@
+export const runtime = "nodejs";
+
 import { Connection, PublicKey } from "@solana/web3.js";
-import { supa, nowMs } from "./_db.js";
+import { supa, nowMs, currentWeekKey } from "./_db.js";
 
 export default async function handler(req, res) {
   try {
@@ -97,7 +99,6 @@ export default async function handler(req, res) {
     const db = supa();
     const now = nowMs();
 
-    // önce kullanıcıyı çek
     const { data: existingUser, error: userReadError } = await db
       .from("users")
       .select("wallet, pass_until, best_score, created_at")
@@ -111,8 +112,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // signature tekrar kullanım koruması
-    // tabloda sig unique olmalı
     const { error: usedInsertError } = await db
       .from("used_signatures")
       .insert({
@@ -141,7 +140,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // aktif pass varsa üstüne ekle
     const currentPassUntil = Number(existingUser?.pass_until || 0);
     const baseTime = currentPassUntil > now ? currentPassUntil : now;
     const passUntil = baseTime + PASS_HOURS * 60 * 60 * 1000;
@@ -176,6 +174,36 @@ export default async function handler(req, res) {
           error: insertError.message || "Failed to create user"
         });
       }
+    }
+
+    const weekKey = currentWeekKey();
+    const jackpotLamports = 3000000; // 0.003 SOL
+
+    const { data: existingJackpot } = await db
+      .from("weekly_jackpots")
+      .select("id, total_lamports, entry_count")
+      .eq("week_key", weekKey)
+      .maybeSingle();
+
+    if (existingJackpot) {
+      await db
+        .from("weekly_jackpots")
+        .update({
+          total_lamports: Number(existingJackpot.total_lamports || 0) + jackpotLamports,
+          entry_count: Number(existingJackpot.entry_count || 0) + 1,
+          updated_at: new Date().toISOString()
+        })
+        .eq("week_key", weekKey);
+    } else {
+      await db
+        .from("weekly_jackpots")
+        .insert({
+          week_key: weekKey,
+          total_lamports: jackpotLamports,
+          entry_count: 1,
+          status: "open",
+          updated_at: new Date().toISOString()
+        });
     }
 
     return res.status(200).json({
