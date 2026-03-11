@@ -119,7 +119,11 @@
       }
 
       if (msg.includes("SOLANA_RPC_URL missing")) {
-        return "Server RPC is missing. Add SOLANA_RPC_URL in Vercel.";
+        return "Server RPC missing in Vercel.";
+      }
+
+      if (msg.includes("Signature already used")) {
+        return "This payment was already processed.";
       }
 
       return msg || "Payment failed";
@@ -150,19 +154,42 @@
       return data;
     }
 
-    async function unlockWithVerify(wallet, signature, memo) {
-      const verify = await verifyWithServer(wallet, signature, memo);
+    async function recoverWithServer(signature) {
+      const res = await fetch(`/api/recover-payment?sig=${encodeURIComponent(signature)}`, {
+        method: "GET"
+      });
 
-      const passUntil =
-        Number(verify.pass_until || 0) ||
-        (Date.now() + UNLOCK_MS);
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (_) {}
 
-      localStorage.setItem("neon99_pass_until", String(passUntil));
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || "Payment recovery failed");
+      }
+
+      return data;
+    }
+
+    async function unlockRanked(wallet, passUntil) {
+      const finalPassUntil = Number(passUntil || 0) || (Date.now() + UNLOCK_MS);
       localStorage.setItem("neon99_wallet", wallet);
-
+      localStorage.setItem("neon99_pass_until", String(finalPassUntil));
       setStatus("Payment verified. Ranked unlocked.");
       alert("Ranked unlocked for 24 hours");
       location.href = "city.html";
+    }
+
+    async function tryNormalVerify(wallet, signature, memo) {
+      setStatus("Verifying payment...");
+      const verify = await verifyWithServer(wallet, signature, memo);
+      await unlockRanked(wallet, verify.pass_until);
+    }
+
+    async function tryRecovery(signature) {
+      setStatus("Trying payment recovery...");
+      const recovery = await recoverWithServer(signature);
+      await unlockRanked(recovery.wallet, recovery.pass_until);
     }
 
     async function pay() {
@@ -184,7 +211,6 @@
         setStatus("Connecting wallet...");
         const connectResult = await provider.connect();
         wallet = (connectResult?.publicKey || provider.publicKey).toString();
-
         localStorage.setItem("neon99_wallet", wallet);
 
         const connection = new solanaWeb3.Connection(
@@ -211,17 +237,14 @@
 
         setStatus("Waiting for Phantom approval...");
         const sendResult = await provider.signAndSendTransaction(tx);
-        signature =
-          typeof sendResult === "string"
-            ? sendResult
-            : sendResult.signature;
+        signature = typeof sendResult === "string" ? sendResult : sendResult.signature;
 
         if (!signature) {
           throw new Error("No transaction signature returned");
         }
 
-        setStatus("Confirming on-chain...");
         try {
+          setStatus("Confirming on-chain...");
           await connection.confirmTransaction(
             {
               signature,
@@ -234,26 +257,30 @@
           if (!isExpiredError(confirmErr)) {
             throw confirmErr;
           }
-
-          // confirm expired olsa bile tx zincire düşmüş olabilir
           setStatus("Confirmation expired, checking payment...");
           await sleep(2500);
         }
 
-        setStatus("Verifying payment...");
-        await unlockWithVerify(wallet, signature, memo);
+        try {
+          await tryNormalVerify(wallet, signature, memo);
+          return;
+        } catch (verifyErr) {
+          console.error("verify failed, trying recovery", verifyErr);
+        }
+
+        await tryRecovery(signature);
 
       } catch (e) {
         console.error(e);
 
-        // signature varsa son bir kez verify dene
-        if (wallet && memo && signature) {
+        if (signature) {
           try {
-            setStatus("Trying payment recovery...");
             await sleep(1500);
-            await unlockWithVerify(wallet, signature, memo);
+            await tryRecovery(signature);
             return;
-          } catch (_) {}
+          } catch (recoveryErr) {
+            console.error("recovery failed", recoveryErr);
+          }
         }
 
         const msg = readErrorMessage(e);
