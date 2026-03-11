@@ -3,7 +3,6 @@
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>NEON WORLD '99</title>
-
   <link rel="stylesheet" href="styles.css">
 </head>
 
@@ -37,7 +36,7 @@
 
     <br><br>
 
-    <button onclick="location.href='ranked.html'">RANKED MODE (0.01 SOL)</button>
+    <button onclick="goRankedEntry()">RANKED MODE (0.01 SOL)</button>
 
     <br><br>
 
@@ -45,6 +44,11 @@
   </div>
 
   <script>
+    function goRankedEntry() {
+      localStorage.setItem("neon99_mode", "ranked");
+      location.href = "ranked.html";
+    }
+
     async function loadJackpot() {
       const amountEl = document.getElementById("jackpotAmount");
       const entriesEl = document.getElementById("jackpotEntries");
@@ -65,7 +69,7 @@
 
         amountEl.textContent = `${totalSol.toFixed(3)} SOL`;
         entriesEl.textContent = `${entryCount} ranked entries • ${weekKey}`;
-      } catch (e) {
+      } catch (_) {
         amountEl.textContent = "Unavailable";
         entriesEl.textContent = "";
       }
@@ -75,6 +79,5 @@
   </script>
 
   <script src="game.js"></script>
-
 </body>
 </html>
