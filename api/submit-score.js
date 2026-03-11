@@ -2,7 +2,6 @@ export const runtime = "nodejs";
 
 import { supa, nowMs } from "./_db.js";
 
-const GAME_SECONDS = 60;
 const MIN_PLAY_MS = 45000;
 const MAX_PLAY_MS = 5 * 60 * 1000;
 const MAX_REASONABLE_SCORE = 5000000;
@@ -10,7 +9,10 @@ const MAX_REASONABLE_SCORE = 5000000;
 export default async function handler(req, res) {
   try {
     if (req.method !== "POST") {
-      return res.status(405).json({ ok: false, error: "POST only" });
+      return res.status(405).json({
+        ok: false,
+        error: "POST only"
+      });
     }
 
     const body = req.body || {};
