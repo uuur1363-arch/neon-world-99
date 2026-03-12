@@ -6,7 +6,7 @@
 const GAME_SECONDS = 60;
 const SITE_URL = "https://neon-world-99.vercel.app";
 
-// Easier unlock progression for a 60-second arcade loop
+// City unlock progression used by BOTH city screen logic and game start logic
 const UNLOCKS = [
   { name: "New York", need: 0 },
   { name: "Tokyo", need: 300 },
@@ -285,6 +285,10 @@ function getCityTheme(city) {
   return CITY_THEMES[city] || CITY_THEMES["New York"];
 }
 
+function getUnlockData(cityName) {
+  return UNLOCKS.find((c) => c.name === cityName) || null;
+}
+
 function shortWallet(w) {
   const s = String(w || "");
   if (!s) return "N/A";
@@ -512,6 +516,16 @@ window.goHome = function () {
 
 // ---------------- CITY SELECT ----------------
 window.city = async function (name) {
+  const cityData = getUnlockData(name);
+
+  if (!cityData) {
+    alert("Unknown city: " + name);
+    return;
+  }
+
+  // Always refresh latest local best right before checking
+  bestScore = loadBest();
+
   if (getMode() === "ranked") {
     const hasAccess = await ensureRankedAccess();
     if (!hasAccess) {
@@ -520,14 +534,13 @@ window.city = async function (name) {
     }
   }
 
-  const cityData = UNLOCKS.find(c => c.name === name);
-  if (!cityData) {
-    alert("Unknown city: " + name);
-    return;
-  }
-
   if (bestScore < cityData.need) {
-    alert("LOCKED\nYou need " + cityData.need + " score");
+    alert(
+      "LOCKED\n" +
+      "CITY: " + name + "\n" +
+      "NEED: " + cityData.need + "\n" +
+      "YOUR BEST: " + bestScore
+    );
     return;
   }
 
@@ -893,7 +906,7 @@ function runMiniGame() {
   function end(finalScore) {
     stopMusic();
 
-    bestScore = Math.max(bestScore, finalScore);
+    bestScore = Math.max(loadBest(), finalScore);
     saveBest(bestScore);
 
     try {
