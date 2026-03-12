@@ -94,21 +94,8 @@
       border:1px solid #333;
     }
 
-    .disabled{
-      opacity:.55;
-      pointer-events:none;
-    }
-
     .status-ok{
       color:#7dff8a;
-    }
-
-    .status-bad{
-      color:#ff7676;
-    }
-
-    .status-warn{
-      color:#ffd166;
     }
 
     .mono{
@@ -216,36 +203,17 @@
     }
 
     async function getWorkingConnection() {
-      const candidates = [];
+      const url = window.location.origin + "/api/solana-rpc";
 
       try {
-        const r = await fetch("/api/solana-rpc", { method: "GET" });
-        const j = await r.json();
-
-        if (r.ok && j.ok && j.rpc_url) {
-          candidates.push(j.rpc_url);
-        }
+        const conn = new solanaWeb3.Connection(url, "confirmed");
+        await conn.getLatestBlockhash("confirmed");
+        logLine("Using RPC: " + url);
+        return conn;
       } catch (e) {
-        logLine("Server RPC fetch failed: " + String(e.message || e));
+        logLine("RPC failed: " + url + " => " + String(e.message || e));
+        throw e;
       }
-
-      candidates.push("https://api.mainnet-beta.solana.com");
-
-      let lastErr = null;
-
-      for (const url of candidates) {
-        try {
-          const conn = new solanaWeb3.Connection(url, "confirmed");
-          await conn.getLatestBlockhash("confirmed");
-          logLine("Using RPC: " + url);
-          return conn;
-        } catch (e) {
-          lastErr = e;
-          logLine("RPC failed: " + url + " => " + String(e.message || e));
-        }
-      }
-
-      throw new Error(String(lastErr?.message || lastErr || "No working Solana RPC available"));
     }
 
     async function connectPhantom() {
@@ -315,7 +283,7 @@
         }
 
         if (!treasuryWallet) {
-          alert("Treasury config missing. Add /api/config endpoint or hardcode treasury in ranked.html");
+          alert("Treasury config missing");
           return;
         }
 
@@ -422,15 +390,14 @@
       }
 
       try {
-        const r = await fetch("/api/solana-rpc");
-        const j = await r.json();
-        if (r.ok && j.ok && j.rpc_url) {
-          logLine("Server RPC ready");
-        } else {
-          logLine("Server RPC unavailable");
-        }
-      } catch {
-        logLine("Server RPC unavailable");
+        const testConn = new solanaWeb3.Connection(
+          window.location.origin + "/api/solana-rpc",
+          "confirmed"
+        );
+        await testConn.getLatestBlockhash("confirmed");
+        logLine("Server RPC ready");
+      } catch (e) {
+        logLine("Server RPC failed: " + String(e.message || e));
       }
     }
 
