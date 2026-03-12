@@ -2,13 +2,10 @@
 <html>
 
 <head>
-
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
 <title>NEON WORLD '99 — CITIES</title>
 
 <style>
-
 body{
 margin:0;
 padding:20px;
@@ -67,7 +64,6 @@ color:#888;
 font-size:11px;
 margin-bottom:6px;
 }
-
 </style>
 
 </head>
@@ -77,16 +73,12 @@ margin-bottom:6px;
 <h1>CHOOSE CITY</h1>
 
 <div style="text-align:center;margin-bottom:20px">
-
 MODE: <span id="mode"></span>
 &nbsp;&nbsp;
 BEST: <span id="best"></span>
-
 </div>
 
 <div class="grid" id="grid"></div>
-
-<script src="game.js"></script>
 
 <script>
 
@@ -140,13 +132,11 @@ function cityUnlocked(city){
 if(city==="New York") return true
 
 const index=CITY_ORDER.indexOf(city)
-
 const prev=CITY_ORDER[index-1]
 
 const prevScore=getCityScore(prev)
 
 return prevScore>=CITY_REQUIRE[city]
-
 }
 
 function getMode(){
@@ -156,25 +146,20 @@ return localStorage.getItem("neon99_mode")||"free"
 function render(){
 
 document.getElementById("mode").textContent=getMode()
-
 document.getElementById("best").textContent=loadBest()
 
 const grid=document.getElementById("grid")
-
 grid.innerHTML=""
 
 CITY_ORDER.forEach(city=>{
 
 const unlocked=cityUnlocked(city)
-
 const score=getCityScore(city)
 
 const card=document.createElement("div")
-
 card.className="card"
 
 card.innerHTML=`
-
 <div class="city">${city}</div>
 
 <div class="meta">
@@ -187,10 +172,9 @@ Unlock need: ${CITY_REQUIRE[city]}
 ${unlocked?"UNLOCKED":"LOCKED"}
 </div>
 
-<button ${unlocked?"":"disabled"} onclick="city('${city}')">
+<button ${unlocked?"":"disabled"} onclick="playCity('${city}')">
 ${unlocked?"PLAY":"LOCKED"}
 </button>
-
 `
 
 grid.appendChild(card)
@@ -199,10 +183,17 @@ grid.appendChild(card)
 
 }
 
+function playCity(name){
+
+localStorage.setItem("neon99_city",name)
+
+location.href="/index.html"
+
+}
+
 render()
 
 </script>
 
 </body>
-
 </html>
