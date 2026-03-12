@@ -1,8 +1,9 @@
-// NEON WORLD '99 — STABLE FINAL ENGINE
+// NEON WORLD '99 — FINAL GAME ENGINE
 
 const GAME_SECONDS = 60;
+const SITE_URL = "https://neon-world-99.vercel.app";
 
-// progression order
+// ---------------- PROGRESSION ----------------
 const CITY_ORDER = [
   "New York",
   "Tokyo",
@@ -16,8 +17,6 @@ const CITY_ORDER = [
   "Istanbul"
 ];
 
-// unlock requirements:
-// each city unlocks by reaching this score in the PREVIOUS city
 const CITY_REQUIRE = {
   "New York": 0,
   "Tokyo": 500,
@@ -31,21 +30,21 @@ const CITY_REQUIRE = {
   "Istanbul": 2500
 };
 
-// city difficulty
+// ---------------- DIFFICULTY ----------------
 const CITY_DIFF = {
-  "New York": { bpm: 110, note: 180, spawn: 1.00, accent: "#00d4ff" },
-  "Tokyo": { bpm: 118, note: 195, spawn: 1.05, accent: "#ff4fd8" },
-  "Berlin": { bpm: 122, note: 210, spawn: 1.10, accent: "#a8ff3e" },
-  "Rio": { bpm: 126, note: 225, spawn: 1.15, accent: "#ffd166" },
-  "Seoul": { bpm: 130, note: 240, spawn: 1.20, accent: "#7afcff" },
-  "London": { bpm: 134, note: 255, spawn: 1.25, accent: "#c8b6ff" },
-  "Paris": { bpm: 138, note: 270, spawn: 1.30, accent: "#ff99c8" },
-  "Dubai": { bpm: 142, note: 285, spawn: 1.35, accent: "#f8e16c" },
+  "New York":  { bpm: 110, note: 180, spawn: 1.00, accent: "#00d4ff" },
+  "Tokyo":     { bpm: 118, note: 195, spawn: 1.05, accent: "#ff4fd8" },
+  "Berlin":    { bpm: 122, note: 210, spawn: 1.10, accent: "#a8ff3e" },
+  "Rio":       { bpm: 126, note: 225, spawn: 1.15, accent: "#ffd166" },
+  "Seoul":     { bpm: 130, note: 240, spawn: 1.20, accent: "#7afcff" },
+  "London":    { bpm: 134, note: 255, spawn: 1.25, accent: "#c8b6ff" },
+  "Paris":     { bpm: 138, note: 270, spawn: 1.30, accent: "#ff99c8" },
+  "Dubai":     { bpm: 142, note: 285, spawn: 1.35, accent: "#f8e16c" },
   "Singapore": { bpm: 146, note: 300, spawn: 1.40, accent: "#8be9fd" },
-  "Istanbul": { bpm: 150, note: 320, spawn: 1.50, accent: "#ffb703" }
+  "Istanbul":  { bpm: 150, note: 320, spawn: 1.50, accent: "#ffb703" }
 };
 
-// themes
+// ---------------- THEMES ----------------
 const CITY_BG = {
   "New York": "/bg_ny.jpg",
   "Tokyo": "/bg_tokyo.jpg",
@@ -72,34 +71,49 @@ const CITY_BGM = {
   "Istanbul": "/bgm_lux.mp3"
 };
 
-// ---------------- GLOBAL ZOOM / GESTURE LOCK ----------------
-let lastGlobalTouchEnd = 0;
+// ---------------- GLOBAL TOUCH / ZOOM LOCK ----------------
+(function lockMobileZoomAndGestures() {
+  let lastTouchEnd = 0;
 
-document.addEventListener("touchmove", function (e) {
-  if (typeof e.scale === "number" && e.scale !== 1) {
+  document.addEventListener("touchstart", function (e) {
+    if (e.touches && e.touches.length > 1) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  document.addEventListener("touchmove", function (e) {
+    if (e.touches && e.touches.length > 1) {
+      e.preventDefault();
+    }
+    if (typeof e.scale === "number" && e.scale !== 1) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  document.addEventListener("touchend", function (e) {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 350) {
+      e.preventDefault();
+    }
+    lastTouchEnd = now;
+  }, { passive: false });
+
+  document.addEventListener("dblclick", function (e) {
     e.preventDefault();
-  }
-}, { passive: false });
+  }, { passive: false });
 
-document.addEventListener("touchend", function (e) {
-  const now = Date.now();
-  if (now - lastGlobalTouchEnd <= 300) {
+  document.addEventListener("gesturestart", function (e) {
     e.preventDefault();
-  }
-  lastGlobalTouchEnd = now;
-}, { passive: false });
+  }, { passive: false });
 
-document.addEventListener("gesturestart", function (e) {
-  e.preventDefault();
-}, { passive: false });
+  document.addEventListener("gesturechange", function (e) {
+    e.preventDefault();
+  }, { passive: false });
 
-document.addEventListener("gesturechange", function (e) {
-  e.preventDefault();
-}, { passive: false });
-
-document.addEventListener("gestureend", function (e) {
-  e.preventDefault();
-}, { passive: false });
+  document.addEventListener("gestureend", function (e) {
+    e.preventDefault();
+  }, { passive: false });
+})();
 
 // ---------------- STORAGE ----------------
 function loadBest() {
@@ -192,6 +206,14 @@ function getAccent(city) {
   return (CITY_DIFF[city] || CITY_DIFF["New York"]).accent;
 }
 
+function getBg(city) {
+  return CITY_BG[city] || CITY_BG["New York"];
+}
+
+function getMusic(city) {
+  return CITY_BGM[city] || CITY_BGM["New York"];
+}
+
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (m) => {
     return {
@@ -204,23 +226,21 @@ function escapeHtml(s) {
   });
 }
 
-function applyBackground(city) {
-  const bg = CITY_BG[city] || CITY_BG["New York"];
-  document.body.style.margin = "0";
-  document.body.style.backgroundColor = "#000";
-  document.body.style.backgroundImage = `url("${bg}")`;
-  document.body.style.backgroundSize = "cover";
-  document.body.style.backgroundPosition = "center";
-  document.body.style.backgroundRepeat = "no-repeat";
-  document.body.style.overscrollBehavior = "none";
-  document.body.style.touchAction = "manipulation";
-}
-
 function shortWallet(w) {
   const s = String(w || "");
   if (!s) return "N/A";
   if (s.length <= 12) return s;
   return s.slice(0, 4) + "..." + s.slice(-4);
+}
+
+function applyBackground(city) {
+  document.body.style.margin = "0";
+  document.body.style.backgroundColor = "#000";
+  document.body.style.backgroundImage = `url("${getBg(city)}")`;
+  document.body.style.backgroundSize = "cover";
+  document.body.style.backgroundPosition = "center";
+  document.body.style.backgroundRepeat = "no-repeat";
+  document.body.style.overscrollBehavior = "none";
 }
 
 // ---------------- MUSIC ----------------
@@ -243,11 +263,9 @@ function startMusicGesture(city) {
 
   try {
     stopMusic();
-    const src = CITY_BGM[city] || CITY_BGM["New York"];
-    bgm = new Audio(src);
+    bgm = new Audio(getMusic(city));
     bgm.loop = true;
     bgm.volume = 0.38;
-
     const p = bgm.play();
     bgmStarted = true;
 
@@ -310,7 +328,7 @@ async function ensureRankedAccess() {
   }
 }
 
-// ---------------- ANTI-CHEAT RUN TOKEN ----------------
+// ---------------- ANTI-CHEAT ----------------
 let currentRunToken = "";
 
 async function createRunToken(cityName) {
@@ -342,11 +360,68 @@ async function createRunToken(cityName) {
   currentRunToken = String(data.run_token);
 }
 
+// ---------------- VIRAL SHARE ----------------
+async function fetchWeeklyShareData() {
+  try {
+    const r = await fetch("/api/weekly-winner");
+    const j = await r.json();
+
+    if (!r.ok || !j.ok) {
+      return {
+        jackpot: "live jackpot",
+        leader: "current leader"
+      };
+    }
+
+    return {
+      jackpot: `${Number(j.jackpot_sol || 0).toFixed(3)} SOL`,
+      leader: `${shortWallet(j.leader_wallet || "")} / ${Number(j.leader_score || 0)}`
+    };
+  } catch {
+    return {
+      jackpot: "live jackpot",
+      leader: "current leader"
+    };
+  }
+}
+
+async function buildShareText(finalScore) {
+  const weekly = await fetchWeeklyShareData();
+  const mode = getMode();
+
+  return [
+    `I scored ${finalScore} in Neon World '99 🎮`,
+    `City: ${currentCity}`,
+    mode === "ranked" ? "Ranked mode live on Solana." : "Retro rhythm arcade on Solana.",
+    `Weekly Jackpot: ${weekly.jackpot}`,
+    `Current Leader: ${weekly.leader}`,
+    "",
+    `Play now: ${SITE_URL}`
+  ].join("\n");
+}
+
+async function shareScore(finalScore) {
+  const text = await buildShareText(finalScore);
+
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: "Neon World '99",
+        text
+      });
+      return;
+    } catch {}
+  }
+
+  const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+  location.href = xUrl;
+}
+
 // ---------------- GLOBALS ----------------
 let currentCity = localStorage.getItem("neon99_city") || "";
 let bestScore = loadBest();
 
-// ---------------- START ----------------
+// ---------------- GAME BOOT ----------------
 async function bootGame() {
   const app = document.getElementById("app");
   if (!app) return;
@@ -388,8 +463,10 @@ async function bootGame() {
   startGame();
 }
 
+// ---------------- GAME UI ----------------
 function startGame() {
   applyBackground(currentCity);
+  stopMusic();
 
   const accent = getAccent(currentCity);
   const app = document.getElementById("app");
@@ -412,7 +489,7 @@ function startGame() {
       <canvas id="cv"
         width="390"
         height="600"
-        style="width:100%;max-width:420px;border:1px solid rgba(255,255,255,.25);border-radius:12px;background:rgba(0,0,0,.45);touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;">
+        style="width:100%;max-width:420px;border:1px solid rgba(255,255,255,.25);border-radius:12px;background:rgba(0,0,0,.45);touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;">
       </canvas>
 
       <div style="margin-top:10px;font-size:12px;color:rgba(255,255,255,.78)">
@@ -443,6 +520,7 @@ function startGame() {
   runGame();
 }
 
+// ---------------- GAME LOOP ----------------
 function runGame() {
   const cv = document.getElementById("cv");
   const ctx = cv.getContext("2d");
@@ -459,10 +537,9 @@ function runGame() {
   let last = performance.now();
 
   let lastTouchEnd = 0;
-
   cv.addEventListener("touchend", (e) => {
     const now = Date.now();
-    if (now - lastTouchEnd <= 300) {
+    if (now - lastTouchEnd <= 350) {
       e.preventDefault();
     }
     lastTouchEnd = now;
@@ -496,12 +573,18 @@ function runGame() {
   cv.addEventListener("pointerdown", hit, { passive: false });
 
   let sx = null;
+
   cv.addEventListener("touchstart", (e) => {
+    if (e.cancelable) e.preventDefault();
+    if (!e.touches || !e.touches[0]) return;
     sx = e.touches[0].clientX;
-  }, { passive: true });
+  }, { passive: false });
 
   cv.addEventListener("touchmove", (e) => {
+    if (e.cancelable) e.preventDefault();
     if (sx == null) return;
+    if (!e.touches || !e.touches[0]) return;
+
     const x = e.touches[0].clientX;
     const dx = x - sx;
 
@@ -510,11 +593,12 @@ function runGame() {
       bpm = Math.max(diff.bpm - 25, Math.min(diff.bpm + 25, bpm));
       sx = x;
     }
-  }, { passive: true });
+  }, { passive: false });
 
-  cv.addEventListener("touchend", () => {
+  cv.addEventListener("touchend", (e) => {
+    if (e.cancelable) e.preventDefault();
     sx = null;
-  }, { passive: true });
+  }, { passive: false });
 
   function loop(now) {
     const dt = Math.min(0.033, (now - last) / 1000);
@@ -584,6 +668,7 @@ function runGame() {
   requestAnimationFrame(loop);
 }
 
+// ---------------- GAME END ----------------
 function endGame(finalScore) {
   stopMusic();
 
@@ -638,7 +723,10 @@ function showEndScreen(finalScore) {
       </div>
 
       <div style="margin-top:18px;display:flex;flex-direction:column;gap:10px;align-items:center">
-        <button id="againBtn" style="width:100%;max-width:420px;padding:14px;border:none;border-radius:12px;background:${accent};color:#000;font-family:monospace;font-weight:bold">
+        <button id="shareBtn" style="width:100%;max-width:420px;padding:14px;border:none;border-radius:12px;background:${accent};color:#000;font-family:monospace;font-weight:bold">
+          SHARE SCORE
+        </button>
+        <button id="againBtn" style="width:100%;max-width:420px;padding:14px;border:none;border-radius:12px;background:#222;color:#ddd;border:1px solid #444;font-family:monospace;font-weight:bold">
           PLAY AGAIN
         </button>
         <button id="citiesBtn" style="width:100%;max-width:420px;padding:14px;border:none;border-radius:12px;background:#222;color:#ddd;border:1px solid #444;font-family:monospace;font-weight:bold">
@@ -650,6 +738,10 @@ function showEndScreen(finalScore) {
       </div>
     </div>
   `;
+
+  document.getElementById("shareBtn").onclick = async () => {
+    await shareScore(finalScore);
+  };
 
   document.getElementById("againBtn").onclick = async () => {
     try {
@@ -671,7 +763,7 @@ function showEndScreen(finalScore) {
   };
 }
 
-// boot only on game page
+// ---------------- BOOT ----------------
 if (document.getElementById("app")) {
   bootGame();
 }
