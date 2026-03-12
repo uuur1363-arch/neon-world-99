@@ -6,127 +6,181 @@
   <style>
     body{
       margin:0;
-      padding:20px 14px 36px;
-      background:#000;
+      padding:18px 12px 32px;
+      background:
+        radial-gradient(circle at top, rgba(0,212,255,.08), transparent 30%),
+        radial-gradient(circle at bottom, rgba(255,45,107,.07), transparent 30%),
+        #000;
       color:#fff;
       font-family:monospace;
     }
+
     .wrap{
-      max-width:900px;
+      max-width:920px;
       margin:0 auto;
     }
+
     h1{
       color:#00d4ff;
       text-align:center;
-      margin:8px 0 6px;
+      margin:6px 0 6px;
+      letter-spacing:.5px;
+      text-shadow:0 0 10px rgba(0,212,255,.28);
     }
+
     .sub{
-      color:rgba(255,255,255,.7);
+      color:rgba(255,255,255,.72);
       text-align:center;
-      font-size:13px;
-      margin-bottom:18px;
+      font-size:12px;
+      margin-bottom:14px;
+      line-height:1.5;
     }
+
     .top{
       display:flex;
       justify-content:center;
-      gap:10px;
+      gap:8px;
       flex-wrap:wrap;
-      margin-bottom:18px;
+      margin-bottom:16px;
     }
+
     .pill{
-      padding:10px 12px;
+      padding:9px 11px;
       border-radius:999px;
       border:1px solid rgba(255,255,255,.14);
       background:rgba(255,255,255,.04);
-      font-size:12px;
+      font-size:11px;
       color:#fff;
     }
+
     .grid{
       display:grid;
       grid-template-columns:1fr;
-      gap:14px;
+      gap:12px;
     }
+
     .card{
       position:relative;
       overflow:hidden;
       border-radius:16px;
-      min-height:140px;
+      min-height:116px;
       border:1px solid rgba(255,255,255,.14);
       background:#111;
       box-shadow:0 0 0 1px rgba(255,255,255,.03) inset;
     }
+
     .bg{
       position:absolute;
       inset:0;
       background-size:cover;
       background-position:center;
-      filter:brightness(.58);
+      filter:brightness(.52);
+      transform:scale(1.02);
     }
+
     .overlay{
       position:absolute;
       inset:0;
-      background:linear-gradient(to top, rgba(0,0,0,.86), rgba(0,0,0,.18));
+      background:linear-gradient(to right, rgba(0,0,0,.82), rgba(0,0,0,.22));
     }
+
     .content{
       position:relative;
       z-index:2;
-      padding:16px;
+      padding:14px;
+      min-height:116px;
       display:flex;
       flex-direction:column;
       justify-content:space-between;
-      min-height:140px;
     }
+
+    .topRow{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:10px;
+    }
+
+    .left{
+      min-width:0;
+    }
+
     .name{
-      font-size:22px;
+      font-size:20px;
       font-weight:bold;
-      margin-bottom:6px;
+      margin-bottom:4px;
+      line-height:1.1;
     }
+
     .meta{
-      color:rgba(255,255,255,.8);
-      font-size:12px;
-      line-height:1.5;
+      color:rgba(255,255,255,.82);
+      font-size:11px;
+      line-height:1.45;
     }
+
+    .meta b{
+      color:#fff;
+    }
+
     .status{
-      display:inline-block;
-      margin-top:8px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
       padding:6px 10px;
       border-radius:999px;
-      font-size:11px;
+      font-size:10px;
       font-weight:bold;
+      white-space:nowrap;
+      margin-top:6px;
     }
+
     .unlocked{
       background:rgba(0,212,255,.14);
       color:#00d4ff;
-      border:1px solid rgba(0,212,255,.35);
+      border:1px solid rgba(0,212,255,.34);
+      box-shadow:0 0 10px rgba(0,212,255,.12);
     }
+
     .locked{
       background:rgba(255,255,255,.08);
-      color:rgba(255,255,255,.75);
+      color:rgba(255,255,255,.74);
       border:1px solid rgba(255,255,255,.16);
     }
+
+    .bottomRow{
+      display:flex;
+      justify-content:flex-start;
+      margin-top:10px;
+    }
+
     .playBtn{
-      margin-top:12px;
-      width:100%;
-      max-width:180px;
-      padding:12px 14px;
+      width:160px;
+      max-width:100%;
+      padding:11px 12px;
       border:none;
       border-radius:12px;
       font-family:monospace;
       font-weight:bold;
+      font-size:13px;
       background:#00d4ff;
       color:#000;
+      box-shadow:0 0 14px rgba(0,212,255,.18);
     }
+
     .playBtn[disabled]{
       background:rgba(255,255,255,.12);
-      color:rgba(255,255,255,.5);
+      color:rgba(255,255,255,.48);
+      box-shadow:none;
     }
+
     .actions{
       display:flex;
       justify-content:center;
       gap:10px;
       flex-wrap:wrap;
-      margin-top:20px;
+      margin-top:18px;
     }
+
     .btn{
       padding:12px 14px;
       border-radius:12px;
@@ -134,11 +188,20 @@
       background:rgba(255,255,255,.05);
       color:#fff;
       font-family:monospace;
+      min-width:130px;
     }
 
-    @media (min-width: 700px){
+    @media (min-width: 760px){
       .grid{
         grid-template-columns:1fr 1fr;
+      }
+
+      .card{
+        min-height:128px;
+      }
+
+      .content{
+        min-height:128px;
       }
     }
   </style>
@@ -146,12 +209,14 @@
 <body>
   <div class="wrap">
     <h1>CHOOSE YOUR CITY</h1>
-    <div class="sub">Unlocked cities depend on your best score</div>
+    <div class="sub">
+      Unlock cities in free mode, then climb the ranked board.
+    </div>
 
     <div class="top">
-      <div class="pill">Mode: <b id="modeText">Loading...</b></div>
-      <div class="pill">Best Score: <b id="bestText">0</b></div>
-      <div class="pill">Wallet: <b id="walletText">guest</b></div>
+      <div class="pill">MODE: <b id="modeText">Loading...</b></div>
+      <div class="pill">BEST: <b id="bestText">0</b></div>
+      <div class="pill">WALLET: <b id="walletText">guest</b></div>
     </div>
 
     <div class="grid" id="cityGrid"></div>
@@ -164,16 +229,16 @@
 
   <script>
     const CITY_LIST = [
-      { name: "New York", need: 0, bg: "/bg_ny.jpg", fallback: "/bg_ny.jpg" },
-      { name: "Tokyo", need: 10000, bg: "/bg_tokyo.jpg", fallback: "/bg_ny.jpg" },
-      { name: "Berlin", need: 25000, bg: "/bg_berlin.jpg", fallback: "/bg_ny.jpg" },
-      { name: "Rio", need: 50000, bg: "/bg_rio.jpg", fallback: "/bg_ny.jpg" },
-      { name: "Seoul", need: 80000, bg: "/bg_seoul.jpg", fallback: "/bg_tokyo.jpg" },
-      { name: "London", need: 120000, bg: "/bg_london.jpg", fallback: "/bg_berlin.jpg" },
-      { name: "Paris", need: 170000, bg: "/bg_paris.jpg", fallback: "/bg_london.jpg" },
-      { name: "Dubai", need: 230000, bg: "/bg_dubai.jpg", fallback: "/bg_ny.jpg" },
-      { name: "Singapore", need: 300000, bg: "/bg_singapore.jpg", fallback: "/bg_dubai.jpg" },
-      { name: "Istanbul", need: 380000, bg: "/bg_istanbul.jpg", fallback: "/bg_paris.jpg" }
+      { name: "New York", need: 0, bg: "/bg_ny.jpg", fallback: "/bg_ny.jpg", accent: "#00d4ff" },
+      { name: "Tokyo", need: 300, bg: "/bg_tokyo.jpg", fallback: "/bg_ny.jpg", accent: "#ff4fd8" },
+      { name: "Berlin", need: 700, bg: "/bg_berlin.jpg", fallback: "/bg_ny.jpg", accent: "#a8ff3e" },
+      { name: "Rio", need: 1200, bg: "/bg_rio.jpg", fallback: "/bg_ny.jpg", accent: "#ffd166" },
+      { name: "Seoul", need: 1800, bg: "/bg_seoul.jpg", fallback: "/bg_tokyo.jpg", accent: "#7afcff" },
+      { name: "London", need: 2500, bg: "/bg_london.jpg", fallback: "/bg_berlin.jpg", accent: "#c8b6ff" },
+      { name: "Paris", need: 3300, bg: "/bg_paris.jpg", fallback: "/bg_london.jpg", accent: "#ff99c8" },
+      { name: "Dubai", need: 4200, bg: "/bg_dubai.jpg", fallback: "/bg_ny.jpg", accent: "#f8e16c" },
+      { name: "Singapore", need: 5200, bg: "/bg_singapore.jpg", fallback: "/bg_dubai.jpg", accent: "#8be9fd" },
+      { name: "Istanbul", need: 6500, bg: "/bg_istanbul.jpg", fallback: "/bg_paris.jpg", accent: "#ffb703" }
     ];
 
     function loadBest() {
@@ -231,13 +296,18 @@
         img.onerror = () => finish(false);
         img.src = url;
 
-        setTimeout(() => finish(false), 1200);
+        setTimeout(() => finish(false), 1000);
       });
     }
 
     async function getBg(url, fallback) {
       const ok = await imageExists(url);
       return ok ? url : fallback;
+    }
+
+    function buildNeedText(best, need) {
+      if (best >= need) return "READY TO PLAY";
+      return `NEED ${need - best} MORE SCORE`;
     }
 
     async function renderCities() {
@@ -263,17 +333,23 @@
           <div class="bg" style="background-image:url('${bg}')"></div>
           <div class="overlay"></div>
           <div class="content">
-            <div>
-              <div class="name">${escapeHtml(city.name)}</div>
-              <div class="meta">
-                Unlock score: <b>${city.need}</b><br>
-                ${unlocked ? "Ready to play" : `Need ${city.need - best} more score`}
+            <div class="topRow">
+              <div class="left">
+                <div class="name" style="color:${city.accent}; text-shadow:0 0 10px ${city.accent};">
+                  ${escapeHtml(city.name)}
+                </div>
+                <div class="meta">
+                  UNLOCK SCORE: <b>${city.need}</b><br>
+                  ${buildNeedText(best, city.need)}
+                </div>
               </div>
+
               <div class="status ${unlocked ? "unlocked" : "locked"}">
                 ${unlocked ? "UNLOCKED" : "LOCKED"}
               </div>
             </div>
-            <div>
+
+            <div class="bottomRow">
               <button class="playBtn" ${unlocked ? "" : "disabled"} data-city="${escapeHtml(city.name)}">
                 ${unlocked ? "PLAY CITY" : "LOCKED"}
               </button>
