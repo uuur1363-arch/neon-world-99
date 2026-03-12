@@ -1,7 +1,10 @@
 <!DOCTYPE html>
 <html>
+
 <head>
+
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
 <title>NEON WORLD '99 — CITIES</title>
 
 <style>
@@ -21,71 +24,48 @@ color:#00d4ff;
 
 .grid{
 display:grid;
-grid-template-columns:1fr;
-gap:12px;
-max-width:600px;
+gap:14px;
+max-width:500px;
 margin:auto;
 }
 
 .card{
 border:1px solid rgba(255,255,255,.2);
-border-radius:14px;
+border-radius:12px;
 padding:16px;
 background:rgba(255,255,255,.05);
 }
 
 .city{
 font-size:20px;
-font-weight:bold;
 margin-bottom:6px;
 }
 
 .meta{
 font-size:12px;
 color:#aaa;
-margin-bottom:10px;
+margin-bottom:8px;
+}
+
+button{
+padding:10px;
+border:none;
+border-radius:8px;
+background:#00d4ff;
+color:black;
+font-family:monospace;
+font-weight:bold;
+width:100%;
+}
+
+button[disabled]{
+background:#333;
+color:#888;
 }
 
 .status{
 font-size:11px;
-padding:6px 10px;
-border-radius:20px;
-display:inline-block;
-margin-bottom:8px;
-}
-
-.unlocked{
-background:#00d4ff22;
-color:#00d4ff;
-border:1px solid #00d4ff66;
-}
-
-.locked{
-background:#ffffff11;
-color:#aaa;
-border:1px solid #ffffff22;
-}
-
-button{
-padding:10px 14px;
-border-radius:10px;
-border:none;
-font-family:monospace;
-font-weight:bold;
-background:#00d4ff;
-color:black;
-}
-
-button[disabled]{
-background:#444;
-color:#aaa;
-}
-
-.top{
-text-align:center;
-margin-bottom:20px;
-font-size:12px;
-color:#aaa;
+margin-bottom:6px;
 }
 
 </style>
@@ -96,10 +76,12 @@ color:#aaa;
 
 <h1>CHOOSE CITY</h1>
 
-<div class="top">
-MODE: <b id="mode"></b>
+<div style="text-align:center;margin-bottom:20px">
+
+MODE: <span id="mode"></span>
 &nbsp;&nbsp;
-BEST: <b id="best"></b>
+BEST: <span id="best"></span>
+
 </div>
 
 <div class="grid" id="grid"></div>
@@ -108,7 +90,6 @@ BEST: <b id="best"></b>
 
 <script>
 
-// cities
 const CITY_ORDER=[
 "New York",
 "Tokyo",
@@ -122,7 +103,6 @@ const CITY_ORDER=[
 "Istanbul"
 ]
 
-// unlock scores
 const CITY_REQUIRE={
 "New York":0,
 "Tokyo":500,
@@ -136,7 +116,6 @@ const CITY_REQUIRE={
 "Istanbul":2500
 }
 
-// storage
 function loadBest(){
 const v=localStorage.getItem("neon99_best")
 return v?parseInt(v,10):0
@@ -178,9 +157,7 @@ function render(){
 
 document.getElementById("mode").textContent=getMode()
 
-const best=loadBest()
-
-document.getElementById("best").textContent=best
+document.getElementById("best").textContent=loadBest()
 
 const grid=document.getElementById("grid")
 
@@ -201,16 +178,14 @@ card.innerHTML=`
 <div class="city">${city}</div>
 
 <div class="meta">
-CITY SCORE: ${score}
+City score: ${score}
 <br>
-UNLOCK NEED: ${CITY_REQUIRE[city]}
+Unlock need: ${CITY_REQUIRE[city]}
 </div>
 
-<div class="status ${unlocked?"unlocked":"locked"}">
+<div class="status">
 ${unlocked?"UNLOCKED":"LOCKED"}
 </div>
-
-<br>
 
 <button ${unlocked?"":"disabled"} onclick="city('${city}')">
 ${unlocked?"PLAY":"LOCKED"}
@@ -224,13 +199,10 @@ grid.appendChild(card)
 
 }
 
-// refresh
 render()
-
-// safari cache fix
-window.addEventListener("pageshow",render)
 
 </script>
 
 </body>
+
 </html>
