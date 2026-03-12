@@ -1,207 +1,302 @@
 <!DOCTYPE html>
 <html>
-
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Select City</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NEON WORLD '99 — CITIES</title>
+  <style>
+    body{
+      margin:0;
+      padding:20px 14px 36px;
+      background:#000;
+      color:#fff;
+      font-family:monospace;
+    }
+    .wrap{
+      max-width:900px;
+      margin:0 auto;
+    }
+    h1{
+      color:#00d4ff;
+      text-align:center;
+      margin:8px 0 6px;
+    }
+    .sub{
+      color:rgba(255,255,255,.7);
+      text-align:center;
+      font-size:13px;
+      margin-bottom:18px;
+    }
+    .top{
+      display:flex;
+      justify-content:center;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-bottom:18px;
+    }
+    .pill{
+      padding:10px 12px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.04);
+      font-size:12px;
+      color:#fff;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:14px;
+    }
+    .card{
+      position:relative;
+      overflow:hidden;
+      border-radius:16px;
+      min-height:140px;
+      border:1px solid rgba(255,255,255,.14);
+      background:#111;
+      box-shadow:0 0 0 1px rgba(255,255,255,.03) inset;
+    }
+    .bg{
+      position:absolute;
+      inset:0;
+      background-size:cover;
+      background-position:center;
+      filter:brightness(.58);
+    }
+    .overlay{
+      position:absolute;
+      inset:0;
+      background:linear-gradient(to top, rgba(0,0,0,.86), rgba(0,0,0,.18));
+    }
+    .content{
+      position:relative;
+      z-index:2;
+      padding:16px;
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+      min-height:140px;
+    }
+    .name{
+      font-size:22px;
+      font-weight:bold;
+      margin-bottom:6px;
+    }
+    .meta{
+      color:rgba(255,255,255,.8);
+      font-size:12px;
+      line-height:1.5;
+    }
+    .status{
+      display:inline-block;
+      margin-top:8px;
+      padding:6px 10px;
+      border-radius:999px;
+      font-size:11px;
+      font-weight:bold;
+    }
+    .unlocked{
+      background:rgba(0,212,255,.14);
+      color:#00d4ff;
+      border:1px solid rgba(0,212,255,.35);
+    }
+    .locked{
+      background:rgba(255,255,255,.08);
+      color:rgba(255,255,255,.75);
+      border:1px solid rgba(255,255,255,.16);
+    }
+    .playBtn{
+      margin-top:12px;
+      width:100%;
+      max-width:180px;
+      padding:12px 14px;
+      border:none;
+      border-radius:12px;
+      font-family:monospace;
+      font-weight:bold;
+      background:#00d4ff;
+      color:#000;
+    }
+    .playBtn[disabled]{
+      background:rgba(255,255,255,.12);
+      color:rgba(255,255,255,.5);
+    }
+    .actions{
+      display:flex;
+      justify-content:center;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:20px;
+    }
+    .btn{
+      padding:12px 14px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.18);
+      background:rgba(255,255,255,.05);
+      color:#fff;
+      font-family:monospace;
+    }
 
-<style>
-
-body{
-background:black;
-margin:0;
-font-family:monospace;
-color:white;
-text-align:center;
-}
-
-h2{
-margin-top:20px;
-color:#00d4ff;
-}
-
-#map{
-position:relative;
-max-width:900px;
-margin:auto;
-}
-
-#map img{
-width:100%;
-display:block;
-}
-
-.city{
-position:absolute;
-cursor:pointer;
-text-align:center;
-transform:translate(-50%,-50%);
-}
-
-.pin{
-width:40px;
-height:40px;
-border-radius:50%;
-display:flex;
-align-items:center;
-justify-content:center;
-border:1px solid rgba(0,212,255,.4);
-background:rgba(0,0,0,.3);
-box-shadow:0 0 10px rgba(0,212,255,.4);
-animation:pulse 1.5s infinite;
-}
-
-.pin img{
-width:26px;
-height:26px;
-}
-
-.label{
-font-size:12px;
-margin-top:4px;
-}
-
-.locked{
-opacity:0.4;
-filter:grayscale(1);
-animation:none;
-}
-
-.lock{
-position:absolute;
-top:-8px;
-right:-8px;
-font-size:12px;
-}
-
-@keyframes pulse{
-0%{transform:scale(1)}
-50%{transform:scale(1.15)}
-100%{transform:scale(1)}
-}
-
-.zoom{
-transition:transform .6s;
-transform:translate(-50%,-50%) scale(2.5);
-z-index:1000;
-}
-
-</style>
-
+    @media (min-width: 700px){
+      .grid{
+        grid-template-columns:1fr 1fr;
+      }
+    }
+  </style>
 </head>
-
 <body>
+  <div class="wrap">
+    <h1>CHOOSE YOUR CITY</h1>
+    <div class="sub">Unlocked cities depend on your best score</div>
 
-<h2>SELECT CITY</h2>
+    <div class="top">
+      <div class="pill">Mode: <b id="modeText">Loading...</b></div>
+      <div class="pill">Best Score: <b id="bestText">0</b></div>
+      <div class="pill">Wallet: <b id="walletText">guest</b></div>
+    </div>
 
-<div id="map">
+    <div class="grid" id="cityGrid"></div>
 
-<img src="worldmap.PNG">
+    <div class="actions">
+      <button class="btn" onclick="goHome()">HOME</button>
+      <button class="btn" onclick="goBoard()">LEADERBOARD</button>
+    </div>
+  </div>
 
-<div class="city" style="top:40%;left:20%" data-score="0" onclick="pickCity(this,'New York')">
-<div class="pin"><img src="flag_us.PNG"></div>
-<div class="label">New York</div>
-</div>
+  <script>
+    const CITY_LIST = [
+      { name: "New York", need: 0, bg: "/bg_ny.jpg", fallback: "/bg_ny.jpg" },
+      { name: "Tokyo", need: 10000, bg: "/bg_tokyo.jpg", fallback: "/bg_ny.jpg" },
+      { name: "Berlin", need: 25000, bg: "/bg_berlin.jpg", fallback: "/bg_ny.jpg" },
+      { name: "Rio", need: 50000, bg: "/bg_rio.jpg", fallback: "/bg_ny.jpg" },
+      { name: "Seoul", need: 80000, bg: "/bg_seoul.jpg", fallback: "/bg_tokyo.jpg" },
+      { name: "London", need: 120000, bg: "/bg_london.jpg", fallback: "/bg_berlin.jpg" },
+      { name: "Paris", need: 170000, bg: "/bg_paris.jpg", fallback: "/bg_london.jpg" },
+      { name: "Dubai", need: 230000, bg: "/bg_dubai.jpg", fallback: "/bg_ny.jpg" },
+      { name: "Singapore", need: 300000, bg: "/bg_singapore.jpg", fallback: "/bg_dubai.jpg" },
+      { name: "Istanbul", need: 380000, bg: "/bg_istanbul.jpg", fallback: "/bg_paris.jpg" }
+    ];
 
-<div class="city" style="top:45%;left:80%" data-score="10000" onclick="pickCity(this,'Tokyo')">
-<div class="pin"><img src="flag_jp.PNG"></div>
-<div class="label">Tokyo</div>
-</div>
+    function loadBest() {
+      try {
+        const v = localStorage.getItem("neon99_best");
+        return v ? parseInt(v, 10) : 0;
+      } catch {
+        return 0;
+      }
+    }
 
-<div class="city" style="top:42%;left:52%" data-score="25000" onclick="pickCity(this,'Berlin')">
-<div class="pin"><img src="flag_de.PNG"></div>
-<div class="label">Berlin</div>
-</div>
+    function getMode() {
+      return localStorage.getItem("neon99_mode") || "free";
+    }
 
-<div class="city" style="top:60%;left:30%" data-score="50000" onclick="pickCity(this,'Rio')">
-<div class="pin"><img src="flag_br.PNG"></div>
-<div class="label">Rio</div>
-</div>
+    function getWallet() {
+      try {
+        return localStorage.getItem("neon99_wallet") || "guest";
+      } catch {
+        return "guest";
+      }
+    }
 
-<div class="city" style="top:50%;left:75%" data-score="80000" onclick="pickCity(this,'Seoul')">
-<div class="pin"><img src="flag_kr.PNG"></div>
-<div class="label">Seoul</div>
-</div>
+    function shortWallet(w) {
+      const s = String(w || "");
+      if (!s) return "guest";
+      if (s.length <= 12) return s;
+      return s.slice(0, 4) + "..." + s.slice(-4);
+    }
 
-<div class="city" style="top:38%;left:48%" data-score="120000" onclick="pickCity(this,'London')">
-<div class="pin"><img src="flag_gb.PNG"></div>
-<div class="label">London</div>
-</div>
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (m) => {
+        return {
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          "\"": "&quot;",
+          "'": "&#39;"
+        }[m];
+      });
+    }
 
-<div class="city" style="top:45%;left:50%" data-score="170000" onclick="pickCity(this,'Paris')">
-<div class="pin"><img src="flag_fr.PNG"></div>
-<div class="label">Paris</div>
-</div>
+    function imageExists(url) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        let done = false;
 
-<div class="city" style="top:48%;left:60%" data-score="230000" onclick="pickCity(this,'Dubai')">
-<div class="pin"><img src="flag_ae.PNG"></div>
-<div class="label">Dubai</div>
-</div>
+        const finish = (ok) => {
+          if (done) return;
+          done = true;
+          resolve(ok);
+        };
 
-<div class="city" style="top:55%;left:70%" data-score="300000" onclick="pickCity(this,'Singapore')">
-<div class="pin"><img src="flag_sg.PNG"></div>
-<div class="label">Singapore</div>
-</div>
+        img.onload = () => finish(true);
+        img.onerror = () => finish(false);
+        img.src = url;
 
-<div class="city" style="top:45%;left:55%" data-score="380000" onclick="pickCity(this,'Istanbul')">
-<div class="pin"><img src="flag_tr.PNG"></div>
-<div class="label">Istanbul</div>
-</div>
+        setTimeout(() => finish(false), 1200);
+      });
+    }
 
-</div>
+    async function getBg(url, fallback) {
+      const ok = await imageExists(url);
+      return ok ? url : fallback;
+    }
 
-<script src="game.js"></script>
+    async function renderCities() {
+      const best = loadBest();
+      const mode = getMode();
+      const wallet = getWallet();
 
-<script>
+      document.getElementById("modeText").textContent = mode.toUpperCase();
+      document.getElementById("bestText").textContent = String(best);
+      document.getElementById("walletText").textContent = shortWallet(wallet);
 
-function loadBest(){
-return parseInt(localStorage.getItem("neon99_best")||0)
-}
+      const grid = document.getElementById("cityGrid");
+      grid.innerHTML = "";
 
-let best = loadBest()
+      for (const city of CITY_LIST) {
+        const unlocked = best >= city.need;
+        const bg = await getBg(city.bg, city.fallback);
 
-document.querySelectorAll(".city").forEach(c=>{
+        const card = document.createElement("div");
+        card.className = "card";
 
-let need=parseInt(c.dataset.score)
+        card.innerHTML = `
+          <div class="bg" style="background-image:url('${bg}')"></div>
+          <div class="overlay"></div>
+          <div class="content">
+            <div>
+              <div class="name">${escapeHtml(city.name)}</div>
+              <div class="meta">
+                Unlock score: <b>${city.need}</b><br>
+                ${unlocked ? "Ready to play" : `Need ${city.need - best} more score`}
+              </div>
+              <div class="status ${unlocked ? "unlocked" : "locked"}">
+                ${unlocked ? "UNLOCKED" : "LOCKED"}
+              </div>
+            </div>
+            <div>
+              <button class="playBtn" ${unlocked ? "" : "disabled"} data-city="${escapeHtml(city.name)}">
+                ${unlocked ? "PLAY CITY" : "LOCKED"}
+              </button>
+            </div>
+          </div>
+        `;
 
-if(best < need){
+        grid.appendChild(card);
+      }
 
-c.classList.add("locked")
+      grid.querySelectorAll(".playBtn").forEach((btn) => {
+        btn.onclick = () => {
+          const cityName = btn.getAttribute("data-city");
+          if (!btn.disabled) {
+            window.city(cityName);
+          }
+        };
+      });
+    }
 
-let l=document.createElement("div")
-l.className="lock"
-l.innerHTML="🔒"
+    renderCities();
+  </script>
 
-c.appendChild(l)
-
-}
-
-})
-
-function pickCity(el,name){
-
-let need=parseInt(el.dataset.score)
-
-if(best < need){
-
-alert("LOCKED\nNeed score: "+need)
-
-return
-
-}
-
-el.classList.add("zoom")
-
-setTimeout(()=>{
-
-city(name)
-
-},600)
-
-}
-
-</script>
-
+  <script src="game.js"></script>
 </body>
-
 </html>
