@@ -72,6 +72,35 @@ const CITY_BGM = {
   "Istanbul": "/bgm_lux.mp3"
 };
 
+// ---------------- GLOBAL ZOOM / GESTURE LOCK ----------------
+let lastGlobalTouchEnd = 0;
+
+document.addEventListener("touchmove", function (e) {
+  if (typeof e.scale === "number" && e.scale !== 1) {
+    e.preventDefault();
+  }
+}, { passive: false });
+
+document.addEventListener("touchend", function (e) {
+  const now = Date.now();
+  if (now - lastGlobalTouchEnd <= 300) {
+    e.preventDefault();
+  }
+  lastGlobalTouchEnd = now;
+}, { passive: false });
+
+document.addEventListener("gesturestart", function (e) {
+  e.preventDefault();
+}, { passive: false });
+
+document.addEventListener("gesturechange", function (e) {
+  e.preventDefault();
+}, { passive: false });
+
+document.addEventListener("gestureend", function (e) {
+  e.preventDefault();
+}, { passive: false });
+
 // ---------------- STORAGE ----------------
 function loadBest() {
   try {
@@ -183,6 +212,8 @@ function applyBackground(city) {
   document.body.style.backgroundSize = "cover";
   document.body.style.backgroundPosition = "center";
   document.body.style.backgroundRepeat = "no-repeat";
+  document.body.style.overscrollBehavior = "none";
+  document.body.style.touchAction = "manipulation";
 }
 
 function shortWallet(w) {
@@ -381,7 +412,7 @@ function startGame() {
       <canvas id="cv"
         width="390"
         height="600"
-        style="width:100%;max-width:420px;border:1px solid rgba(255,255,255,.25);border-radius:12px;background:rgba(0,0,0,.45);touch-action:manipulation">
+        style="width:100%;max-width:420px;border:1px solid rgba(255,255,255,.25);border-radius:12px;background:rgba(0,0,0,.45);touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;">
       </canvas>
 
       <div style="margin-top:10px;font-size:12px;color:rgba(255,255,255,.78)">
@@ -426,6 +457,16 @@ function runGame() {
   const notes = [];
   let spawnTimer = 0;
   let last = performance.now();
+
+  let lastTouchEnd = 0;
+
+  cv.addEventListener("touchend", (e) => {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) {
+      e.preventDefault();
+    }
+    lastTouchEnd = now;
+  }, { passive: false });
 
   function spawn() {
     notes.push({
