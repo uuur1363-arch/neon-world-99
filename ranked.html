@@ -8,8 +8,8 @@
       margin:0;
       padding:24px 16px 36px;
       background:
-        radial-gradient(circle at top, rgba(255,45,107,.10), transparent 35%),
-        radial-gradient(circle at bottom, rgba(0,212,255,.08), transparent 35%),
+        radial-gradient(circle at top, rgba(255,45,107,.12), transparent 35%),
+        radial-gradient(circle at bottom, rgba(0,212,255,.10), transparent 35%),
         #000;
       color:#fff;
       font-family:monospace;
@@ -22,7 +22,8 @@
     h1{
       color:#ff2d6b;
       margin:8px 0 10px;
-      text-shadow:0 0 10px rgba(255,45,107,.2);
+      text-shadow:0 0 10px rgba(255,45,107,.25);
+      letter-spacing:.5px;
     }
 
     .sub{
@@ -31,6 +32,29 @@
       margin:0 auto 18px;
       max-width:430px;
       line-height:1.55;
+    }
+
+    .hero{
+      margin:0 auto 14px;
+      max-width:430px;
+      border:1px solid rgba(255,45,107,.22);
+      border-radius:16px;
+      padding:16px;
+      background:linear-gradient(180deg, rgba(255,45,107,.08), rgba(0,212,255,.05));
+      box-shadow:0 0 24px rgba(255,45,107,.08);
+    }
+
+    .heroTitle{
+      color:#fff;
+      font-size:16px;
+      font-weight:bold;
+      margin-bottom:8px;
+    }
+
+    .heroText{
+      color:rgba(255,255,255,.8);
+      font-size:13px;
+      line-height:1.6;
     }
 
     .panel{
@@ -106,6 +130,7 @@
     .statusOk{ color:#00ff9c; }
     .statusWarn{ color:#ffd166; }
     .statusBad{ color:#ff8c8c; }
+    .statusInfo{ color:#7adfff; }
 
     .log{
       margin:14px auto 0;
@@ -121,13 +146,28 @@
       white-space:pre-wrap;
       word-break:break-word;
     }
+
+    .tiny{
+      font-size:12px;
+      color:rgba(255,255,255,.65);
+      line-height:1.5;
+    }
   </style>
 </head>
 <body>
 
   <h1>RANKED MODE</h1>
+
   <div class="sub">
-    Connect your wallet, pay 0.01 SOL, unlock ranked access, then play ranked runs in your unlocked cities.
+    Connect your wallet, unlock ranked with 0.01 SOL, compete in your unlocked cities, climb the leaderboard, and chase the weekly jackpot.
+  </div>
+
+  <div class="hero">
+    <div class="heroTitle">24-HOUR RANKED ACCESS</div>
+    <div class="heroText">
+      One payment unlocks ranked mode for 24 hours on this wallet.<br>
+      If confirmation is slow, the system will try automatic recovery.
+    </div>
   </div>
 
   <div class="actions">
@@ -159,35 +199,43 @@
   <div class="panel">
     <div class="label">HOW IT WORKS</div>
     <div class="value">
-      1. Connect wallet<br>
-      2. Pay 0.01 SOL for access<br>
-      3. Play ranked in your unlocked cities<br>
-      4. Climb leaderboard and chase the weekly jackpot
+      1. Connect your Phantom wallet<br>
+      2. Pay 0.01 SOL to unlock ranked for 24 hours<br>
+      3. Play ranked runs in your unlocked cities<br>
+      4. Climb the leaderboard and chase the weekly jackpot
     </div>
   </div>
 
   <button id="connectBtn" onclick="connectWallet()">CONNECT WALLET</button>
-  <button id="paymentBtn" class="secondary" onclick="openPaymentFlow()">OPEN PAYMENT FLOW</button>
+  <button id="paymentBtn" class="secondary" onclick="openPaymentFlow()">UNLOCK RANKED (0.01 SOL)</button>
   <button id="continueBtn" onclick="continueRanked()">CONTINUE TO CITIES</button>
 
-  <div id="log" class="log">Ready.</div>
+  <div class="log" id="log">Ready.</div>
 
   <script type="module">
     import {
       Connection,
       PublicKey,
       Transaction,
-      SystemProgram
+      SystemProgram,
+      TransactionInstruction
     } from "https://esm.sh/@solana/web3.js@1.95.3";
 
     const ENTRY_SOL = 0.01;
     const ENTRY_LAMPORTS = 10000000;
     const TREASURY_WALLET = "8UH2aQubZ5kjR5PpesoPio4zkAfafoMY5hHuKrPYz6ct";
     const FALLBACK_RPC = "https://api.mainnet-beta.solana.com";
+    const MEMO_PROGRAM_ID = new PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr");
 
     function log(msg) {
       const el = document.getElementById("log");
-      el.textContent += "\\n" + msg;
+      el.textContent += "\n" + msg;
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function setLog(msg) {
+      const el = document.getElementById("log");
+      el.textContent = msg;
     }
 
     function goBack() {
@@ -241,52 +289,74 @@
       } catch {}
     }
 
+    function getProvider() {
+      if (window.phantom?.solana) return window.phantom.solana;
+      if (window.solana?.isPhantom) return window.solana;
+      if (window.solana) return window.solana;
+      return null;
+    }
+
     function updateWalletUI() {
       document.getElementById("walletText").textContent = shortWallet(getWallet());
     }
 
+    function formatRemaining(ms) {
+      if (ms <= 0) return "Expired";
+      const totalSec = Math.floor(ms / 1000);
+      const hours = Math.floor(totalSec / 3600);
+      const mins = Math.floor((totalSec % 3600) / 60);
+      return `${hours}h ${mins}m remaining`;
+    }
+
     function updatePassUI(pass, passUntil, sourceLabel) {
       const el = document.getElementById("passText");
+      const wallet = getWallet();
 
-      if (!getWallet()) {
-        el.innerHTML = `<span class="statusBad">Wallet required</span>`;
+      if (!wallet) {
+        el.innerHTML = `<span class="statusBad">Wallet required</span><br><span class="tiny">Connect your Phantom wallet first</span>`;
         return;
       }
 
       if (pass && Date.now() < Number(passUntil || 0)) {
         const expires = new Date(Number(passUntil)).toLocaleString();
-        el.innerHTML = `<span class="statusOk">Active</span><br>Expires: ${expires}${sourceLabel ? `<br>Source: ${sourceLabel}` : ""}`;
+        const remaining = formatRemaining(Number(passUntil) - Date.now());
+        el.innerHTML = `
+          <span class="statusOk">Ranked unlocked for 24 hours</span><br>
+          Expires: ${expires}<br>
+          <span class="statusInfo">${remaining}</span>
+          ${sourceLabel ? `<br><span class="tiny">Source: ${sourceLabel}</span>` : ""}
+        `;
       } else {
-        el.innerHTML = `<span class="statusWarn">Not active</span><br>Pay ${ENTRY_SOL} SOL to unlock ranked access`;
+        el.innerHTML = `
+          <span class="statusWarn">Ranked access not active</span><br>
+          Pay ${ENTRY_SOL} SOL to unlock ranked for 24 hours
+        `;
       }
     }
 
-    async function connectWallet() {
-      try {
-        if (window.phantom?.solana) {
-          const resp = await window.phantom.solana.connect();
-          const wallet = String(resp.publicKey || "");
-          setWallet(wallet);
-          updateWalletUI();
-          await refreshPass();
-          log("Wallet connected: " + wallet);
-          return;
-        }
+    function makeMemo(wallet) {
+      return `neon99-ranked:${wallet}:${Date.now()}`;
+    }
 
-        if (window.solana?.isPhantom) {
-          const resp = await window.solana.connect();
-          const wallet = String(resp.publicKey || "");
-          setWallet(wallet);
-          updateWalletUI();
-          await refreshPass();
-          log("Wallet connected: " + wallet);
-          return;
-        }
+    function makeMemoInstruction(memo) {
+      return new TransactionInstruction({
+        keys: [],
+        programId: MEMO_PROGRAM_ID,
+        data: new TextEncoder().encode(memo)
+      });
+    }
 
-        alert("Open with Phantom or use the Phantom browser to connect your wallet.");
-      } catch (e) {
-        alert(String(e?.message || e));
-      }
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function isExpiredError(err) {
+      const msg = String(err?.message || err || "").toLowerCase();
+      return (
+        msg.includes("block height exceeded") ||
+        msg.includes("expired") ||
+        msg.includes("transactionexpiredblockheightexceedederror")
+      );
     }
 
     async function refreshPass() {
@@ -311,7 +381,7 @@
         setPassUntil(passUntil);
         updatePassUI(pass, passUntil, "server");
         return pass;
-      } catch {
+      } catch (e) {
         const localPassUntil = getPassUntil();
         const localPass = Date.now() < localPassUntil;
         updatePassUI(localPass, localPassUntil, "local cache");
@@ -323,13 +393,81 @@
       try {
         const r = await fetch("/api/solana-rpc");
         const j = await r.json();
+
         if (r.ok && j.ok && j.rpc_url) {
           log("RPC loaded from /api/solana-rpc");
           return new Connection(j.rpc_url, "confirmed");
         }
-      } catch {}
+      } catch (_) {}
+
       log("Using fallback RPC");
       return new Connection(FALLBACK_RPC, "confirmed");
+    }
+
+    async function connectWallet() {
+      try {
+        const provider = getProvider();
+
+        if (!provider) {
+          alert("Open with Phantom or use the Phantom browser to connect your wallet.");
+          return;
+        }
+
+        const resp = await provider.connect();
+        const wallet = String(resp.publicKey || provider.publicKey || "");
+        setWallet(wallet);
+        localStorage.setItem("neon99_mode", "ranked");
+        updateWalletUI();
+        await refreshPass();
+        log("Wallet connected: " + wallet);
+      } catch (e) {
+        alert(String(e?.message || e));
+      }
+    }
+
+    async function tryVerify(wallet, signature, memo) {
+      const vr = await fetch("/api/verify-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          wallet,
+          signature,
+          memo
+        })
+      });
+
+      const vj = await vr.json();
+
+      if (!vr.ok || !vj.ok) {
+        throw new Error(vj.error || "verify-payment failed");
+      }
+
+      if (vj.pass_until) {
+        setPassUntil(Number(vj.pass_until));
+      }
+
+      log("verify-payment: ok");
+      return true;
+    }
+
+    async function tryRecover(signature) {
+      const rr = await fetch(`/api/recover-payment?sig=${encodeURIComponent(signature)}`);
+      const rj = await rr.json();
+
+      if (!rr.ok || !rj.ok) {
+        throw new Error(rj.error || "recover-payment failed");
+      }
+
+      if (rj.pass_until) {
+        setPassUntil(Number(rj.pass_until));
+      }
+
+      if (rj.wallet) {
+        setWallet(String(rj.wallet));
+      }
+
+      log("recover-payment: ok");
+      return true;
     }
 
     async function openPaymentFlow() {
@@ -340,24 +478,28 @@
         return;
       }
 
-      const provider = window.phantom?.solana || window.solana;
+      const provider = getProvider();
       if (!provider?.isPhantom) {
         alert("Phantom wallet required.");
         return;
       }
 
       try {
+        localStorage.setItem("neon99_mode", "ranked");
+
         const alreadyActive = await refreshPass();
         if (alreadyActive) {
           alert("Ranked access is already active.");
           return;
         }
 
+        setLog("Preparing payment flow...");
         log("Preparing payment transaction...");
-        const connection = await getConnection();
 
+        const connection = await getConnection();
         const fromPubkey = new PublicKey(wallet);
         const toPubkey = new PublicKey(TREASURY_WALLET);
+        const memo = makeMemo(wallet);
 
         const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
 
@@ -369,7 +511,8 @@
             fromPubkey,
             toPubkey,
             lamports: ENTRY_LAMPORTS
-          })
+          }),
+          makeMemoInstruction(memo)
         );
 
         log("Requesting Phantom signature...");
@@ -384,64 +527,67 @@
         log("Signature: " + signature);
         log("Confirming transaction...");
 
-        await connection.confirmTransaction({
-          signature,
-          blockhash,
-          lastValidBlockHeight
-        }, "confirmed");
-
-        log("Transaction confirmed.");
-
-        // Try verify endpoint first
-        let verifyOk = false;
         try {
-          const vr = await fetch("/api/verify-payment", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              wallet,
-              signature
-            })
-          });
+          await connection.confirmTransaction({
+            signature,
+            blockhash,
+            lastValidBlockHeight
+          }, "confirmed");
 
-          const vj = await vr.json();
-          if (vr.ok && vj.ok) {
-            verifyOk = true;
-            if (vj.pass_until) setPassUntil(Number(vj.pass_until));
-            log("verify-payment: ok");
+          log("Transaction confirmed.");
+        } catch (confirmErr) {
+          if (isExpiredError(confirmErr)) {
+            log("Confirmation expired, trying verify/recovery...");
+            await sleep(2500);
           } else {
-            log("verify-payment response: " + JSON.stringify(vj));
+            throw confirmErr;
           }
-        } catch (e) {
-          log("verify-payment failed: " + String(e?.message || e));
         }
 
-        // Re-check /api/me either way
+        let verified = false;
+
+        try {
+          await tryVerify(wallet, signature, memo);
+          verified = true;
+        } catch (verifyErr) {
+          log("verify-payment failed: " + String(verifyErr?.message || verifyErr));
+        }
+
+        if (!verified) {
+          try {
+            await tryRecover(signature);
+            verified = true;
+          } catch (recoverErr) {
+            log("recover-payment failed: " + String(recoverErr?.message || recoverErr));
+          }
+        }
+
         const activeNow = await refreshPass();
 
-        if (verifyOk || activeNow) {
-          alert("Payment verified. Ranked access unlocked.");
+        if (verified || activeNow) {
+          alert("Ranked unlocked for 24 hours.");
           return;
         }
 
-        alert("Payment was sent, but access is not active yet. Refresh once, then try CONTINUE TO CITIES.");
+        alert("Payment was sent, but ranked access is not active yet. Refresh once and try again.");
       } catch (e) {
         log("Payment error: " + String(e?.message || e));
         alert(String(e?.message || e));
       }
     }
 
-    function continueRanked() {
+    async function continueRanked() {
       const wallet = getWallet();
-      const passUntil = getPassUntil();
 
       if (!wallet) {
         alert("Connect wallet first.");
         return;
       }
 
-      if (!(Date.now() < passUntil)) {
-        alert("Ranked access is not active. Open the payment flow first.");
+      const active = await refreshPass();
+
+      if (!active) {
+        alert("Ranked access is not active. Unlock ranked first.");
         return;
       }
 
@@ -464,6 +610,9 @@
     window.continueRanked = continueRanked;
 
     init();
+    setInterval(() => {
+      updatePassUI(Date.now() < getPassUntil(), getPassUntil(), "local cache");
+    }, 30000);
   </script>
 
 </body>
