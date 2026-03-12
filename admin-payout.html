@@ -43,7 +43,7 @@
       font-size:15px;
       word-break:break-word;
     }
-    input{
+    input, textarea{
       width:100%;
       box-sizing:border-box;
       margin-top:6px;
@@ -70,6 +70,10 @@
       background:rgba(255,255,255,.06);
       color:#fff;
       border:1px solid rgba(255,255,255,.18);
+    }
+    .btn3{
+      background:#a8ff3e;
+      color:#000;
     }
     #status{
       margin-top:12px;
@@ -131,7 +135,13 @@
       <input id="adminSecret" type="password" placeholder="Enter admin secret">
     </div>
 
+    <div class="box">
+      <div class="label">TRANSACTION SIGNATURE (for manual mark)</div>
+      <textarea id="txSignature" rows="4" placeholder="Paste transaction signature here"></textarea>
+    </div>
+
     <button id="sendPrizeBtn" type="button">SEND PRIZE</button>
+    <button id="markOnlyBtn" class="btn3" type="button">MARK SENT ONLY</button>
 
     <div id="status"></div>
     <div id="debug"></div>
@@ -195,6 +205,10 @@
         document.getElementById("amountSol").textContent = `${Number(j.amount_sol || 0).toFixed(3)} SOL`;
         document.getElementById("payoutStatus").textContent = j.status || "unknown";
 
+        if (j.tx_signature) {
+          document.getElementById("txSignature").value = j.tx_signature;
+        }
+
         if (j.status === "sent" && j.tx_signature) {
           setStatus(`Already sent.\nTX: ${j.tx_signature}`);
         } else {
@@ -216,6 +230,46 @@
         debug("copy error: " + String(e.message || e));
       }
     };
+
+    async function markSentOnly(signature) {
+      const adminSecret = document.getElementById("adminSecret").value.trim();
+
+      if (!adminSecret) {
+        setStatus("Admin secret required.", true);
+        debug("Admin secret missing for mark-only");
+        return;
+      }
+
+      if (!signature) {
+        setStatus("Transaction signature required.", true);
+        debug("Signature missing for mark-only");
+        return;
+      }
+
+      debug("Calling /api/mark-payout-sent with signature: " + signature);
+
+      const r = await fetch("/api/mark-payout-sent", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          week_key: currentWeekKey,
+          tx_signature: signature,
+          admin_secret: adminSecret
+        })
+      });
+
+      const j = await r.json();
+      debug("mark-payout-sent response: " + JSON.stringify(j));
+
+      if (!r.ok || !j.ok) {
+        throw new Error(j.error || "Failed to mark payout as sent");
+      }
+
+      setStatus(`Payout marked as sent.\nTX: ${signature}`);
+      await loadPayoutStatus();
+    }
 
     async function sendPrize() {
       debug("SEND PRIZE clicked");
@@ -300,6 +354,8 @@
           throw new Error("No transaction signature returned");
         }
 
+        document.getElementById("txSignature").value = signature;
+
         btn.textContent = "CONFIRMING...";
         debug("Confirming transaction...");
 
@@ -313,29 +369,7 @@
         );
 
         btn.textContent = "SAVING...";
-        debug("Calling /api/mark-payout-sent");
-
-        const r = await fetch("/api/mark-payout-sent", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            week_key: currentWeekKey,
-            tx_signature: signature,
-            admin_secret: adminSecret
-          })
-        });
-
-        const j = await r.json();
-        debug("mark-payout-sent response: " + JSON.stringify(j));
-
-        if (!r.ok || !j.ok) {
-          throw new Error(j.error || "Transaction sent but payout record update failed");
-        }
-
-        setStatus(`Prize sent successfully.\nTX: ${signature}`);
-        await loadPayoutStatus();
+        await markSentOnly(signature);
       } catch (e) {
         setStatus(String(e.message || e), true);
         debug("sendPrize error: " + String(e.message || e));
@@ -345,7 +379,18 @@
       }
     }
 
+    async function handleMarkOnly() {
+      try {
+        const signature = document.getElementById("txSignature").value.trim();
+        await markSentOnly(signature);
+      } catch (e) {
+        setStatus(String(e.message || e), true);
+        debug("markOnly error: " + String(e.message || e));
+      }
+    }
+
     document.getElementById("sendPrizeBtn").onclick = sendPrize;
+    document.getElementById("markOnlyBtn").onclick = handleMarkOnly;
 
     debug("Page loaded");
     loadPayoutStatus();
