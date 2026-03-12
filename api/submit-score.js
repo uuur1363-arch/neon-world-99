@@ -13,6 +13,18 @@ function getMaxPossibleScore(hitCount, maxCombo) {
   return (safeHits * 200) + (safeHits * Math.min(safeCombo, safeHits) * 10);
 }
 
+function normalizeCountry(value) {
+  const s = String(value || "").trim();
+  if (!s) return "unknown";
+  return s.slice(0, 64);
+}
+
+function normalizeCity(value) {
+  const s = String(value || "").trim();
+  if (!s) return "unknown";
+  return s.slice(0, 128);
+}
+
 function validateTelemetry({ score, hitCount, missCount, maxCombo, durationMs }) {
   if (!Number.isFinite(hitCount) || hitCount < 0) return "invalid hit_count";
   if (!Number.isFinite(missCount) || missCount < 0) return "invalid miss_count";
@@ -69,8 +81,8 @@ export default async function handler(req, res) {
     const wallet = String(body.wallet || "").trim();
     const runToken = String(body.run_token || "").trim();
     const score = Number(body.score);
-    const city = String(body.city || "").trim();
-    const country = String(body.country || "TR").trim();
+    const city = normalizeCity(body.city);
+    const country = normalizeCountry(body.country);
     const mode = String(body.mode || "free").trim();
     const hitCount = Number(body.hit_count || 0);
     const missCount = Number(body.miss_count || 0);
@@ -135,7 +147,7 @@ export default async function handler(req, res) {
       });
     }
 
-    if (String(run.city || "") !== city) {
+    if (String(run.city || "").trim() !== String(city || "").trim()) {
       return res.status(400).json({
         ok: false,
         error: "city mismatch"
@@ -339,6 +351,7 @@ export default async function handler(req, res) {
           duration_ms: durationMs,
           created_at: now
         });
+
       scoreInsertError = attempt.error || null;
     }
 
@@ -385,9 +398,10 @@ export default async function handler(req, res) {
       ok: true,
       best,
       mode,
-      verified
+      verified,
+      country,
+      city
     });
-
   } catch (e) {
     return res.status(500).json({
       ok: false,
