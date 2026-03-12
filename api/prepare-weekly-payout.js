@@ -5,7 +5,7 @@ import { supa, currentWeekKey } from "./_db.js";
 export default async function handler(req, res) {
   try {
     const db = supa();
-    const weekKey = currentWeekKey();
+    const weekKey = String(req.query.week_key || currentWeekKey()).trim();
 
     const { data: jackpot, error: jackpotError } = await db
       .from("weekly_jackpots")
