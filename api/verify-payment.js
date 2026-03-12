@@ -2,11 +2,24 @@ export const runtime = "nodejs";
 
 import { Connection, PublicKey } from "@solana/web3.js";
 import { supa, nowMs, currentWeekKey } from "./_db.js";
+import { rateLimit, getIp } from "./_security.js";
 
 export default async function handler(req, res) {
   try {
     if (req.method !== "POST") {
-      return res.status(405).json({ ok: false, error: "POST only" });
+      return res.status(405).json({
+        ok: false,
+        error: "POST only"
+      });
+    }
+
+    const ip = getIp(req);
+    const gate = rateLimit(`verify-payment:${ip}`, 20, 60 * 1000);
+    if (!gate.ok) {
+      return res.status(429).json({
+        ok: false,
+        error: "Too many requests"
+      });
     }
 
     const { wallet, signature, memo } = req.body || {};
@@ -111,16 +124,24 @@ export default async function handler(req, res) {
     const db = supa();
     const now = nowMs();
 
-    const { data: existingUser, error: userReadError } = await db
-      .from("users")
-      .select("wallet, pass_until, best_score, created_at")
-      .eq("wallet", wallet)
+    const { data: existingSig, error: existingSigError } = await db
+      .from("used_signatures")
+      .select("sig")
+      .eq("sig", signature)
       .maybeSingle();
 
-    if (userReadError) {
+    if (existingSigError) {
+      console.error("verify-payment signature read failed", { wallet, signature, error: existingSigError.message });
       return res.status(500).json({
         ok: false,
-        error: userReadError.message || "Failed to read user"
+        error: existingSigError.message || "Failed to check signature"
+      });
+    }
+
+    if (existingSig) {
+      return res.status(400).json({
+        ok: false,
+        error: "Signature already used"
       });
     }
 
@@ -133,13 +154,10 @@ export default async function handler(req, res) {
       });
 
     if (usedInsertError) {
-      const msg = String(usedInsertError.message || "").toLowerCase();
+      console.error("verify-payment signature insert failed", { wallet, signature, error: usedInsertError.message });
 
-      if (
-        msg.includes("duplicate") ||
-        msg.includes("unique") ||
-        msg.includes("already")
-      ) {
+      const msg = String(usedInsertError.message || "").toLowerCase();
+      if (msg.includes("duplicate") || msg.includes("unique") || msg.includes("already")) {
         return res.status(400).json({
           ok: false,
           error: "Signature already used"
@@ -149,6 +167,20 @@ export default async function handler(req, res) {
       return res.status(500).json({
         ok: false,
         error: usedInsertError.message || "Failed to store signature"
+      });
+    }
+
+    const { data: existingUser, error: userReadError } = await db
+      .from("users")
+      .select("wallet, pass_until, best_score, created_at")
+      .eq("wallet", wallet)
+      .maybeSingle();
+
+    if (userReadError) {
+      console.error("verify-payment user read failed", { wallet, signature, error: userReadError.message });
+      return res.status(500).json({
+        ok: false,
+        error: userReadError.message || "Failed to read user"
       });
     }
 
@@ -165,6 +197,7 @@ export default async function handler(req, res) {
         .eq("wallet", wallet);
 
       if (updateError) {
+        console.error("verify-payment user update failed", { wallet, signature, error: updateError.message });
         return res.status(500).json({
           ok: false,
           error: updateError.message || "Failed to update user"
@@ -181,6 +214,7 @@ export default async function handler(req, res) {
         });
 
       if (insertError) {
+        console.error("verify-payment user insert failed", { wallet, signature, error: insertError.message });
         return res.status(500).json({
           ok: false,
           error: insertError.message || "Failed to create user"
@@ -193,11 +227,12 @@ export default async function handler(req, res) {
 
     const { data: existingJackpot, error: jackpotReadError } = await db
       .from("weekly_jackpots")
-      .select("id, total_lamports, entry_count")
+      .select("*")
       .eq("week_key", weekKey)
       .maybeSingle();
 
     if (jackpotReadError) {
+      console.error("verify-payment jackpot read failed", { wallet, signature, weekKey, error: jackpotReadError.message });
       return res.status(500).json({
         ok: false,
         error: jackpotReadError.message || "Failed to read jackpot"
@@ -215,6 +250,7 @@ export default async function handler(req, res) {
         .eq("week_key", weekKey);
 
       if (jackpotUpdateError) {
+        console.error("verify-payment jackpot update failed", { wallet, signature, weekKey, error: jackpotUpdateError.message });
         return res.status(500).json({
           ok: false,
           error: jackpotUpdateError.message || "Failed to update jackpot"
@@ -232,6 +268,7 @@ export default async function handler(req, res) {
         });
 
       if (jackpotInsertError) {
+        console.error("verify-payment jackpot insert failed", { wallet, signature, weekKey, error: jackpotInsertError.message });
         return res.status(500).json({
           ok: false,
           error: jackpotInsertError.message || "Failed to create jackpot"
@@ -245,6 +282,7 @@ export default async function handler(req, res) {
     });
 
   } catch (e) {
+    console.error("verify-payment fatal", e);
     return res.status(500).json({
       ok: false,
       error: String(e?.message || e)
