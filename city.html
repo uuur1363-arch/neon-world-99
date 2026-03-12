@@ -1,10 +1,8 @@
 <!DOCTYPE html>
 <html>
-
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>NEON WORLD '99 — CITIES</title>
-
 <style>
 body{
 margin:0;
@@ -22,7 +20,7 @@ color:#00d4ff;
 .grid{
 display:grid;
 gap:14px;
-max-width:500px;
+max-width:520px;
 margin:auto;
 }
 
@@ -42,6 +40,7 @@ margin-bottom:6px;
 font-size:12px;
 color:#aaa;
 margin-bottom:8px;
+line-height:1.45;
 }
 
 button{
@@ -62,17 +61,22 @@ color:#888;
 
 .status{
 font-size:11px;
-margin-bottom:6px;
+margin-bottom:8px;
+}
+
+.top{
+text-align:center;
+margin-bottom:20px;
+font-size:12px;
+color:#aaa;
 }
 </style>
-
 </head>
-
 <body>
 
 <h1>CHOOSE CITY</h1>
 
-<div style="text-align:center;margin-bottom:20px">
+<div class="top">
 MODE: <span id="mode"></span>
 &nbsp;&nbsp;
 BEST: <span id="best"></span>
@@ -81,118 +85,113 @@ BEST: <span id="best"></span>
 <div class="grid" id="grid"></div>
 
 <script>
+const CITY_ORDER = [
+  "New York",
+  "Tokyo",
+  "Berlin",
+  "Rio",
+  "Seoul",
+  "London",
+  "Paris",
+  "Dubai",
+  "Singapore",
+  "Istanbul"
+];
 
-const CITY_ORDER=[
-"New York",
-"Tokyo",
-"Berlin",
-"Rio",
-"Seoul",
-"London",
-"Paris",
-"Dubai",
-"Singapore",
-"Istanbul"
-]
+const CITY_REQUIRE = {
+  "New York":0,
+  "Tokyo":500,
+  "Berlin":700,
+  "Rio":900,
+  "Seoul":1100,
+  "London":1300,
+  "Paris":1500,
+  "Dubai":1800,
+  "Singapore":2100,
+  "Istanbul":2500
+};
 
-const CITY_REQUIRE={
-"New York":0,
-"Tokyo":500,
-"Berlin":700,
-"Rio":900,
-"Seoul":1100,
-"London":1300,
-"Paris":1500,
-"Dubai":1800,
-"Singapore":2100,
-"Istanbul":2500
+function loadBest() {
+  const v = localStorage.getItem("neon99_best");
+  return v ? parseInt(v, 10) : 0;
 }
 
-function loadBest(){
-const v=localStorage.getItem("neon99_best")
-return v?parseInt(v,10):0
+function loadCityScores() {
+  try {
+    const j = localStorage.getItem("neon99_city_scores");
+    return j ? JSON.parse(j) : {};
+  } catch {
+    return {};
+  }
 }
 
-function loadCityScores(){
-try{
-const j=localStorage.getItem("neon99_city_scores")
-return j?JSON.parse(j):{}
-}catch{
-return{}
-}
+function getCityScore(city) {
+  const data = loadCityScores();
+  return data[city] || 0;
 }
 
-function getCityScore(city){
-const data=loadCityScores()
-return data[city]||0
+function cityUnlocked(city) {
+  if (city === "New York") return true;
+
+  const index = CITY_ORDER.indexOf(city);
+  const prev = CITY_ORDER[index - 1];
+  const prevScore = getCityScore(prev);
+
+  return prevScore >= CITY_REQUIRE[city];
 }
 
-function cityUnlocked(city){
-
-if(city==="New York") return true
-
-const index=CITY_ORDER.indexOf(city)
-const prev=CITY_ORDER[index-1]
-
-const prevScore=getCityScore(prev)
-
-return prevScore>=CITY_REQUIRE[city]
+function getMode() {
+  return localStorage.getItem("neon99_mode") || "free";
 }
 
-function getMode(){
-return localStorage.getItem("neon99_mode")||"free"
+function playCity(name) {
+  localStorage.setItem("neon99_city", name);
+  location.href = "/index.html";
 }
 
-function render(){
+function render() {
+  document.getElementById("mode").textContent = getMode().toUpperCase();
+  document.getElementById("best").textContent = loadBest();
 
-document.getElementById("mode").textContent=getMode()
-document.getElementById("best").textContent=loadBest()
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
 
-const grid=document.getElementById("grid")
-grid.innerHTML=""
+  CITY_ORDER.forEach((city) => {
+    const unlocked = cityUnlocked(city);
+    const score = getCityScore(city);
 
-CITY_ORDER.forEach(city=>{
+    const card = document.createElement("div");
+    card.className = "card";
 
-const unlocked=cityUnlocked(city)
-const score=getCityScore(city)
+    const index = CITY_ORDER.indexOf(city);
+    const prev = index > 0 ? CITY_ORDER[index - 1] : null;
 
-const card=document.createElement("div")
-card.className="card"
+    card.innerHTML = `
+      <div class="city">${city}</div>
 
-card.innerHTML=`
-<div class="city">${city}</div>
+      <div class="meta">
+        CITY SCORE: ${score}<br>
+        ${city === "New York"
+          ? "START CITY"
+          : `UNLOCK: ${prev} → ${CITY_REQUIRE[city]}`}
+      </div>
 
-<div class="meta">
-City score: ${score}
-<br>
-Unlock need: ${CITY_REQUIRE[city]}
-</div>
+      <div class="status">
+        ${unlocked ? "UNLOCKED" : "LOCKED"}
+      </div>
 
-<div class="status">
-${unlocked?"UNLOCKED":"LOCKED"}
-</div>
+      <button ${unlocked ? "" : "disabled"} onclick="playCity('${city}')">
+        ${unlocked ? "PLAY" : "LOCKED"}
+      </button>
+    `;
 
-<button ${unlocked?"":"disabled"} onclick="playCity('${city}')">
-${unlocked?"PLAY":"LOCKED"}
-</button>
-`
-
-grid.appendChild(card)
-
-})
-
+    grid.appendChild(card);
+  });
 }
 
-function playCity(name){
-
-localStorage.setItem("neon99_city",name)
-
-location.href="/index.html"
-
-}
-
-render()
-
+render();
+window.addEventListener("pageshow", render);
+window.addEventListener("focus", render);
 </script>
 
 </body>
