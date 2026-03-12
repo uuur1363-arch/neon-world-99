@@ -68,6 +68,26 @@
       line-height:1.55;
     }
 
+    .leaderRow{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:6px;
+    }
+
+    .flag{
+      width:20px;
+      height:14px;
+      object-fit:cover;
+      border-radius:2px;
+      border:1px solid rgba(255,255,255,.22);
+      background:#111;
+      vertical-align:middle;
+      flex:0 0 auto;
+    }
+
     button{
       width:100%;
       max-width:430px;
@@ -137,6 +157,15 @@
       return s.slice(0, 4) + "..." + s.slice(-4);
     }
 
+    function flagUrl(country) {
+      if (!country) return "/flag_us.PNG";
+      return "/flag_" + String(country).toLowerCase() + ".PNG";
+    }
+
+    function flagImg(country, alt) {
+      return `<img class="flag" src="${flagUrl(country)}" alt="${alt || country || 'flag'}" onerror="this.style.display='none'">`;
+    }
+
     function clearPendingState() {
       localStorage.removeItem("neon99_city");
     }
@@ -170,9 +199,15 @@
         const leaderWallet = j.leader_wallet ? shortWallet(j.leader_wallet) : "No leader yet";
         const leaderScore = Number(j.leader_score || 0);
         const leaderCity = j.leader_city || "—";
+        const leaderCountry = j.leader_country || "";
 
-        document.getElementById("leader").textContent =
-          `Leader: ${leaderWallet} | Score: ${leaderScore} | City: ${leaderCity}`;
+        document.getElementById("leader").innerHTML = `
+          <div class="leaderRow">
+            ${flagImg(leaderCountry, leaderCountry)}
+            <span>Leader: ${leaderWallet}</span>
+          </div>
+          <div>Score: ${leaderScore} | City: ${leaderCity}</div>
+        `;
       } catch {
         document.getElementById("jackpot").textContent = "unavailable";
         document.getElementById("leader").textContent = "Could not load weekly stats";
