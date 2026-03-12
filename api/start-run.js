@@ -7,39 +7,55 @@ import { rateLimit, getIp } from "./_security.js";
 const GAME_SECONDS = 60;
 const RUN_TTL_MS = 2 * 60 * 1000;
 const MAX_ACTIVE_RUNS_PER_WALLET = 1;
+const MIN_RUN_GAP_MS = 30000;
 
 export default async function handler(req, res) {
   try {
     if (req.method !== "POST") {
-      return res.status(405).json({ ok: false, error: "POST only" });
+      return res.status(405).json({
+        ok: false,
+        error: "POST only"
+      });
     }
 
-    const ip = getIp(req);
     const body = req.body || {};
     const wallet = String(body.wallet || "guest").trim();
     const mode = String(body.mode || "free").trim();
     const city = String(body.city || "").trim();
     const country = String(body.country || "TR").trim();
+
     const now = nowMs();
+    const expiresAt = now + RUN_TTL_MS;
+    const runToken = crypto.randomBytes(24).toString("hex");
+    const runSeed = crypto.randomBytes(16).toString("hex");
+    const weekKey = currentWeekKey();
 
-    const ipKey = `start-run:ip:${ip}`;
-    const walletKey = `start-run:wallet:${wallet || "guest"}`;
+    const ip = getIp(req);
 
-    const ipGate = rateLimit(ipKey, 20, 60 * 1000);
+    const ipGate = rateLimit(`start-run:ip:${ip}`, 20, 60 * 1000);
     if (!ipGate.ok) {
-      return res.status(429).json({ ok: false, error: "Too many requests" });
+      return res.status(429).json({
+        ok: false,
+        error: "Too many requests"
+      });
     }
 
-    const walletGate = rateLimit(walletKey, 8, 60 * 1000);
+    const walletGate = rateLimit(`start-run:wallet:${wallet || "guest"}`, 8, 60 * 1000);
     if (!walletGate.ok) {
-      return res.status(429).json({ ok: false, error: "Too many wallet requests" });
+      return res.status(429).json({
+        ok: false,
+        error: "Too many wallet requests"
+      });
     }
 
     const db = supa();
 
     if (mode === "ranked") {
       if (!wallet || wallet === "guest") {
-        return res.status(403).json({ ok: false, error: "Ranked wallet required" });
+        return res.status(403).json({
+          ok: false,
+          error: "Ranked wallet required"
+        });
       }
 
       const { data: user, error: userError } = await db
@@ -49,12 +65,18 @@ export default async function handler(req, res) {
         .maybeSingle();
 
       if (userError) {
-        return res.status(500).json({ ok: false, error: userError.message || "Failed to read user" });
+        return res.status(500).json({
+          ok: false,
+          error: userError.message || "Failed to read user"
+        });
       }
 
       const passUntil = Number(user?.pass_until || 0);
       if (!user || passUntil <= now) {
-        return res.status(403).json({ ok: false, error: "Ranked pass required" });
+        return res.status(403).json({
+          ok: false,
+          error: "Ranked pass required"
+        });
       }
 
       const { data: activeRuns, error: activeError } = await db
@@ -66,7 +88,10 @@ export default async function handler(req, res) {
         .limit(5);
 
       if (activeError) {
-        return res.status(500).json({ ok: false, error: activeError.message || "Failed to check active runs" });
+        return res.status(500).json({
+          ok: false,
+          error: activeError.message || "Failed to check active runs"
+        });
       }
 
       if ((activeRuns || []).length >= MAX_ACTIVE_RUNS_PER_WALLET) {
@@ -75,31 +100,75 @@ export default async function handler(req, res) {
           error: "Active run already exists"
         });
       }
+
+      const { data: recentRuns, error: recentRunsError } = await db
+        .from("game_runs")
+        .select("created_at")
+        .eq("wallet", wallet)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (recentRunsError) {
+        return res.status(500).json({
+          ok: false,
+          error: recentRunsError.message || "Failed to check recent runs"
+        });
+      }
+
+      const lastRunAt = Number(recentRuns?.[0]?.created_at || 0);
+      if (lastRunAt > 0 && (now - lastRunAt) < MIN_RUN_GAP_MS) {
+        return res.status(429).json({
+          ok: false,
+          error: "Please wait before starting another run"
+        });
+      }
     }
 
-    const expiresAt = now + RUN_TTL_MS;
-    const runToken = crypto.randomBytes(24).toString("hex");
-    const runSeed = crypto.randomBytes(16).toString("hex");
-    const weekKey = currentWeekKey();
-
-    const { error: insertError } = await db.from("game_runs").insert({
+    const payload = {
       run_token: runToken,
       wallet,
       mode,
       city,
       country,
-      week_key: weekKey,
-      run_seed: runSeed,
-      verification_status: "pending",
       created_at: now,
       expires_at: expiresAt
-    });
+    };
+
+    // Yeni kolonlar varsa yaz, yoksa fallback ile tekrar dene
+    let insertError = null;
+
+    {
+      const attempt = await db.from("game_runs").insert({
+        ...payload,
+        week_key: weekKey,
+        run_seed: runSeed,
+        verification_status: "pending"
+      });
+      insertError = attempt.error || null;
+    }
 
     if (insertError) {
-      return res.status(500).json({
-        ok: false,
-        error: insertError.message || "Failed to create run"
-      });
+      const msg = String(insertError.message || "").toLowerCase();
+      const missingColumn =
+        msg.includes("column") ||
+        msg.includes("week_key") ||
+        msg.includes("run_seed") ||
+        msg.includes("verification_status");
+
+      if (!missingColumn) {
+        return res.status(500).json({
+          ok: false,
+          error: insertError.message || "Failed to create run"
+        });
+      }
+
+      const fallback = await db.from("game_runs").insert(payload);
+      if (fallback.error) {
+        return res.status(500).json({
+          ok: false,
+          error: fallback.error.message || "Failed to create run"
+        });
+      }
     }
 
     return res.status(200).json({
@@ -111,6 +180,7 @@ export default async function handler(req, res) {
       created_at: now,
       expires_at: expiresAt
     });
+
   } catch (e) {
     return res.status(500).json({
       ok: false,
