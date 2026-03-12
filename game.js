@@ -1,7 +1,6 @@
 // NEON WORLD '99 — STABLE FINAL ENGINE
 
 const GAME_SECONDS = 60;
-const SITE_URL = "https://neon-world-99.vercel.app";
 
 // progression order
 const CITY_ORDER = [
@@ -148,13 +147,6 @@ function setLocalPassUntil(v) {
 }
 
 // ---------------- HELPERS ----------------
-function shortWallet(w) {
-  const s = String(w || "");
-  if (!s) return "N/A";
-  if (s.length <= 12) return s;
-  return s.slice(0, 4) + "..." + s.slice(-4);
-}
-
 function cityUnlocked(city) {
   if (city === "New York") return true;
 
@@ -185,11 +177,19 @@ function escapeHtml(s) {
 
 function applyBackground(city) {
   const bg = CITY_BG[city] || CITY_BG["New York"];
+  document.body.style.margin = "0";
   document.body.style.backgroundColor = "#000";
   document.body.style.backgroundImage = `url("${bg}")`;
   document.body.style.backgroundSize = "cover";
   document.body.style.backgroundPosition = "center";
   document.body.style.backgroundRepeat = "no-repeat";
+}
+
+function shortWallet(w) {
+  const s = String(w || "");
+  if (!s) return "N/A";
+  if (s.length <= 12) return s;
+  return s.slice(0, 4) + "..." + s.slice(-4);
 }
 
 // ---------------- MUSIC ----------------
@@ -312,40 +312,28 @@ async function createRunToken(cityName) {
 }
 
 // ---------------- GLOBALS ----------------
-let currentCity = localStorage.getItem("neon99_city") || "New York";
+let currentCity = localStorage.getItem("neon99_city") || "";
 let bestScore = loadBest();
 
-// ---------------- NAV ----------------
-window.goFree = function () {
-  localStorage.setItem("neon99_mode", "free");
-  location.href = "/city.html";
-};
+// ---------------- START ----------------
+async function bootGame() {
+  const app = document.getElementById("app");
+  if (!app) return;
 
-window.goRanked = function () {
-  localStorage.setItem("neon99_mode", "ranked");
-  location.href = "/city.html";
-};
-
-window.goBoard = function () {
-  location.href = "/board.html";
-};
-
-// ---------------- START CITY ----------------
-window.city = async function (name) {
-  if (!CITY_ORDER.includes(name)) {
-    alert("Unknown city");
+  if (!currentCity) {
+    location.href = "/city.html";
     return;
   }
 
-  if (!cityUnlocked(name)) {
-    const index = CITY_ORDER.indexOf(name);
-    const prev = CITY_ORDER[index - 1];
-    alert(
-      "CITY LOCKED\n" +
-      "Play " + prev + " first.\n" +
-      "Need " + CITY_REQUIRE[name] + " in " + prev + ".\n" +
-      "Current " + prev + " score: " + getCityScore(prev)
-    );
+  if (!CITY_ORDER.includes(currentCity)) {
+    localStorage.removeItem("neon99_city");
+    location.href = "/city.html";
+    return;
+  }
+
+  if (!cityUnlocked(currentCity)) {
+    alert("Selected city is locked.");
+    location.href = "/city.html";
     return;
   }
 
@@ -353,31 +341,29 @@ window.city = async function (name) {
     const hasAccess = await ensureRankedAccess();
     if (!hasAccess) {
       alert("RANKED locked.\nConnect + Pay 0.01 SOL first.");
+      location.href = "/ranked.html";
       return;
     }
   }
 
-  localStorage.setItem("neon99_city", name);
-  currentCity = name;
-
   try {
-    await createRunToken(name);
+    await createRunToken(currentCity);
   } catch (e) {
     alert("Could not start run:\n" + String(e.message || e));
+    location.href = "/city.html";
     return;
   }
 
   startGame();
-};
+}
 
-// ---------------- GAME UI ----------------
 function startGame() {
   applyBackground(currentCity);
-  stopMusic();
 
   const accent = getAccent(currentCity);
+  const app = document.getElementById("app");
 
-  document.body.innerHTML = `
+  app.innerHTML = `
     <div style="text-align:center;color:white;font-family:monospace;padding:16px;min-height:100vh;box-sizing:border-box;background:rgba(0,0,0,.34)">
       <h1 style="color:${accent};margin:10px 0;text-shadow:0 0 12px ${accent}">NEON WORLD '99</h1>
 
@@ -402,9 +388,12 @@ function startGame() {
         TAP = HIT · SWIPE = TEMPO
       </div>
 
-      <div style="margin-top:12px">
+      <div style="margin-top:12px;display:flex;justify-content:center;gap:10px;flex-wrap:wrap">
         <button id="backBtn" style="padding:10px 14px;border:none;border-radius:10px;background:${accent};color:#000;font-family:monospace;font-weight:bold">
           BACK TO CITIES
+        </button>
+        <button id="homeBtn" style="padding:10px 14px;border:none;border-radius:10px;background:#222;color:#ddd;border:1px solid #444;font-family:monospace;font-weight:bold">
+          HOME
         </button>
       </div>
     </div>
@@ -415,10 +404,14 @@ function startGame() {
     location.href = "/city.html";
   };
 
+  document.getElementById("homeBtn").onclick = () => {
+    stopMusic();
+    location.href = "/index.html";
+  };
+
   runGame();
 }
 
-// ---------------- GAME LOOP ----------------
 function runGame() {
   const cv = document.getElementById("cv");
   const ctx = cv.getContext("2d");
@@ -540,7 +533,7 @@ function runGame() {
     document.getElementById("c").textContent = String(combo);
 
     if (time <= 0) {
-      end(score | 0);
+      endGame(score | 0);
       return;
     }
 
@@ -550,8 +543,9 @@ function runGame() {
   requestAnimationFrame(loop);
 }
 
-// ---------------- END GAME ----------------
-function end(finalScore) {
+function endGame(finalScore) {
+  stopMusic();
+
   bestScore = Math.max(loadBest(), finalScore);
   saveBest(bestScore);
 
@@ -575,22 +569,68 @@ function end(finalScore) {
     }).catch(() => {});
   } catch {}
 
+  showEndScreen(finalScore);
+}
+
+function showEndScreen(finalScore) {
+  const accent = getAccent(currentCity);
+  const app = document.getElementById("app");
+
   const index = CITY_ORDER.indexOf(currentCity);
   const next = CITY_ORDER[index + 1];
 
-  let msg =
-    "SCORE: " + finalScore +
-    "\nCITY BEST: " + getCityScore(currentCity) +
-    "\nGLOBAL BEST: " + bestScore;
+  const nextText = next
+    ? `NEXT CITY: ${next} | NEED: ${CITY_REQUIRE[next]} | STATUS: ${cityUnlocked(next) ? "UNLOCKED" : "LOCKED"}`
+    : "ALL CITIES CLEARED";
 
-  if (next) {
-    const unlocked = cityUnlocked(next);
-    msg +=
-      "\n\nNEXT CITY: " + next +
-      "\nNEED: " + CITY_REQUIRE[next] +
-      "\nSTATUS: " + (unlocked ? "UNLOCKED" : "LOCKED");
-  }
+  app.innerHTML = `
+    <div style="text-align:center;color:white;font-family:monospace;padding:24px 16px;min-height:100vh;box-sizing:border-box;background:rgba(0,0,0,.42)">
+      <div style="font-size:12px;color:rgba(255,255,255,.72)">STAGE CLEAR</div>
+      <h1 style="color:${accent};margin:10px 0 14px;text-shadow:0 0 12px ${accent}">RUN COMPLETE</h1>
 
-  alert(msg);
-  location.href = "/city.html";
+      <div style="max-width:420px;margin:0 auto;border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:18px;background:rgba(255,255,255,.04);line-height:1.8">
+        <div>CITY: <b>${escapeHtml(currentCity)}</b></div>
+        <div>SCORE: <b>${finalScore}</b></div>
+        <div>CITY BEST: <b>${getCityScore(currentCity)}</b></div>
+        <div>GLOBAL BEST: <b>${bestScore}</b></div>
+        <div style="margin-top:8px;font-size:12px;color:#aaa">${nextText}</div>
+      </div>
+
+      <div style="margin-top:18px;display:flex;flex-direction:column;gap:10px;align-items:center">
+        <button id="againBtn" style="width:100%;max-width:420px;padding:14px;border:none;border-radius:12px;background:${accent};color:#000;font-family:monospace;font-weight:bold">
+          PLAY AGAIN
+        </button>
+        <button id="citiesBtn" style="width:100%;max-width:420px;padding:14px;border:none;border-radius:12px;background:#222;color:#ddd;border:1px solid #444;font-family:monospace;font-weight:bold">
+          CHANGE CITY
+        </button>
+        <button id="homeBtn" style="width:100%;max-width:420px;padding:14px;border:none;border-radius:12px;background:#222;color:#ddd;border:1px solid #444;font-family:monospace;font-weight:bold">
+          HOME
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById("againBtn").onclick = async () => {
+    try {
+      await createRunToken(currentCity);
+    } catch (e) {
+      alert("Could not restart run:\n" + String(e.message || e));
+      location.href = "/city.html";
+      return;
+    }
+    startGame();
+  };
+
+  document.getElementById("citiesBtn").onclick = () => {
+    location.href = "/city.html";
+  };
+
+  document.getElementById("homeBtn").onclick = () => {
+    location.href = "/index.html";
+  };
+}
+
+// boot only on game page
+if (document.getElementById("app")) {
+  bootGame();
 }
