@@ -5,14 +5,11 @@ import { supa, currentWeekKey } from "./_db.js";
 export default async function handler(req, res) {
   try {
     if (req.method !== "GET") {
-      return res.status(405).json({
-        ok: false,
-        error: "GET only"
-      });
+      return res.status(405).json({ ok: false, error: "GET only" });
     }
 
     const db = supa();
-    const weekKey = currentWeekKey();
+    const weekKey = String(req.query.week_key || currentWeekKey()).trim();
 
     const { data: jackpot, error: jackpotError } = await db
       .from("weekly_jackpots")
@@ -21,30 +18,21 @@ export default async function handler(req, res) {
       .maybeSingle();
 
     if (jackpotError) {
-      return res.status(500).json({
-        ok: false,
-        error: jackpotError.message || "Failed to read jackpot"
-      });
+      return res.status(500).json({ ok: false, error: jackpotError.message || "Failed to read jackpot" });
     }
-
-    const now = Date.now();
-    const dayMs = 24 * 60 * 60 * 1000;
-    const startMs = now - (7 * dayMs);
 
     const { data: rankedScores, error: scoresError } = await db
       .from("scores")
       .select("wallet, score, city, country, mode, created_at")
       .eq("mode", "ranked")
-      .gte("created_at", startMs)
+      .eq("week_key", weekKey)
+      .eq("verified", true)
       .order("score", { ascending: false })
       .order("created_at", { ascending: true })
       .limit(1);
 
     if (scoresError) {
-      return res.status(500).json({
-        ok: false,
-        error: scoresError.message || "Failed to read ranked scores"
-      });
+      return res.status(500).json({ ok: false, error: scoresError.message || "Failed to read ranked scores" });
     }
 
     const leader = Array.isArray(rankedScores) && rankedScores.length > 0
@@ -69,7 +57,6 @@ export default async function handler(req, res) {
       winner_wallet: jackpot?.winner_wallet || null,
       winner_score: Number(jackpot?.winner_score || 0)
     });
-
   } catch (e) {
     return res.status(500).json({
       ok: false,
