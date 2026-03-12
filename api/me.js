@@ -1,9 +1,14 @@
+export const runtime = "nodejs";
+
 import { supa, nowMs } from "./_db.js";
 
 export default async function handler(req, res) {
   try {
     if (req.method !== "GET") {
-      return res.status(405).json({ ok: false, error: "GET only" });
+      return res.status(405).json({
+        ok: false,
+        error: "GET only"
+      });
     }
 
     const wallet = String(req.query.wallet || "").trim();
@@ -16,10 +21,11 @@ export default async function handler(req, res) {
     }
 
     const db = supa();
+    const now = nowMs();
 
-    const { data, error } = await db
+    const { data: user, error } = await db
       .from("users")
-      .select("wallet, pass_until, best_score")
+      .select("wallet, pass_until, best_score, created_at")
       .eq("wallet", wallet)
       .maybeSingle();
 
@@ -30,18 +36,17 @@ export default async function handler(req, res) {
       });
     }
 
-    const now = nowMs();
-    const passUntil = Number(data?.pass_until || 0);
-    const bestScore = Number(data?.best_score || 0);
-    const pass = passUntil > now;
+    const passUntil = Number(user?.pass_until || 0);
+    const bestScore = Number(user?.best_score || 0);
 
     return res.status(200).json({
       ok: true,
       wallet,
-      exists: !!data,
-      pass,
+      exists: !!user,
+      pass: passUntil > now,
       pass_until: passUntil,
-      best_score: bestScore
+      best_score: bestScore,
+      created_at: Number(user?.created_at || 0)
     });
 
   } catch (e) {
