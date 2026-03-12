@@ -1,141 +1,151 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NEON WORLD '99</title>
-<style>
-body{
-background:black;
-color:white;
-font-family:monospace;
-margin:0;
-padding:30px;
-text-align:center;
-}
-
-h1{
-color:#00d4ff;
-margin-bottom:10px;
-}
-
-.panel{
-margin:auto;
-max-width:420px;
-border:1px solid rgba(255,255,255,.2);
-border-radius:14px;
-padding:18px;
-margin-bottom:18px;
-background:rgba(255,255,255,.05);
-}
-
-.jackpot{
-font-size:22px;
-color:#00ff9c;
-}
-
-.leader{
-font-size:12px;
-color:#aaa;
-margin-top:6px;
-line-height:1.5;
-}
-
-button{
-width:100%;
-padding:14px;
-margin-top:10px;
-border:none;
-border-radius:10px;
-font-size:16px;
-font-weight:bold;
-font-family:monospace;
-background:#00d4ff;
-color:black;
-}
-
-button.secondary{
-background:#222;
-color:#ccc;
-border:1px solid #444;
-}
-</style>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NEON WORLD '99</title>
+  <style>
+    body{
+      background:
+        radial-gradient(circle at top, rgba(0,212,255,.10), transparent 35%),
+        radial-gradient(circle at bottom, rgba(255,45,107,.08), transparent 35%),
+        #000;
+      color:#fff;
+      font-family:monospace;
+      margin:0;
+      padding:28px 16px 40px;
+      text-align:center;
+    }
+    h1{
+      color:#00d4ff;
+      margin:8px 0 10px;
+      text-shadow:0 0 10px rgba(0,212,255,.25);
+    }
+    .sub{
+      color:rgba(255,255,255,.72);
+      font-size:13px;
+      margin-bottom:18px;
+      line-height:1.5;
+    }
+    .panel{
+      margin:0 auto 14px;
+      max-width:430px;
+      border:1px solid rgba(255,255,255,.16);
+      border-radius:14px;
+      padding:16px;
+      background:rgba(255,255,255,.04);
+    }
+    .title{
+      font-size:12px;
+      color:#aaa;
+      margin-bottom:6px;
+    }
+    .jackpot{
+      font-size:24px;
+      color:#00ff9c;
+      margin-bottom:6px;
+    }
+    .leader{
+      font-size:12px;
+      color:#aaa;
+      line-height:1.5;
+    }
+    button{
+      width:100%;
+      max-width:430px;
+      padding:14px;
+      margin-top:10px;
+      border:none;
+      border-radius:12px;
+      font-size:15px;
+      font-weight:bold;
+      font-family:monospace;
+      background:#00d4ff;
+      color:#000;
+    }
+    button.secondary{
+      background:#1a1a1a;
+      color:#ddd;
+      border:1px solid #444;
+    }
+  </style>
 </head>
 <body>
 
-<h1>NEON WORLD '99</h1>
+  <div class="title">RETRO RHYTHM ARCADE ON SOLANA</div>
+  <h1>NEON WORLD '99</h1>
+  <div class="sub">
+    Compete. Climb. Win the weekly jackpot.
+  </div>
 
-<div class="panel">
-  <div>WEEKLY JACKPOT</div>
-  <div class="jackpot" id="jackpot">loading...</div>
-  <div class="leader" id="leader">loading leader...</div>
-</div>
+  <div class="panel">
+    <div class="title">WEEKLY JACKPOT</div>
+    <div class="jackpot" id="jackpot">loading...</div>
+    <div class="leader" id="leader">loading leader...</div>
+  </div>
 
-<div class="panel">
-  <button onclick="goFreeMenu()">START FREE MODE</button>
-  <button onclick="goRankedMenu()">RANKED MODE (0.01 SOL)</button>
+  <div class="panel">
+    <div class="title">RANKED MODE</div>
+    <div style="font-size:18px;color:#fff;">0.01 SOL entry</div>
+    <div class="leader">Play ranked, climb leaderboard, chase the weekly prize.</div>
+  </div>
+
+  <button onclick="startFree()">START FREE MODE</button>
+  <button onclick="startRanked()">RANKED MODE</button>
   <button class="secondary" onclick="location.href='/board.html'">LEADERBOARD</button>
-</div>
 
-<script>
-function goFreeMenu() {
-  localStorage.setItem("neon99_mode", "free");
-  location.href = "/city.html";
-}
-
-function goRankedMenu() {
-  localStorage.setItem("neon99_mode", "ranked");
-  location.href = "/ranked.html";
-}
-
-function shortWallet(w) {
-  const s = String(w || "");
-  if (!s) return "—";
-  if (s.length <= 12) return s;
-  return s.slice(0, 4) + "..." + s.slice(-4);
-}
-
-async function loadWeeklyStats() {
-  try {
-    const r = await fetch("/api/weekly-winner");
-    const j = await r.json();
-
-    if (!r.ok || !j.ok) {
-      document.getElementById("jackpot").textContent = "unavailable";
-      document.getElementById("leader").textContent = "Could not load weekly stats";
-      return;
+  <script>
+    function shortWallet(w) {
+      const s = String(w || "");
+      if (!s) return "—";
+      if (s.length <= 12) return s;
+      return s.slice(0, 4) + "..." + s.slice(-4);
     }
 
-    document.getElementById("jackpot").textContent =
-      `${Number(j.jackpot_sol || 0).toFixed(3)} SOL`;
+    function clearPendingGameState() {
+      localStorage.removeItem("neon99_city");
+    }
 
-    const leaderWallet = j.leader_wallet ? shortWallet(j.leader_wallet) : "No leader yet";
-    const leaderScore = Number(j.leader_score || 0);
-    const leaderCity = j.leader_city || "—";
+    function startFree() {
+      clearPendingGameState();
+      localStorage.setItem("neon99_mode", "free");
+      location.href = "/city.html";
+    }
 
-    document.getElementById("leader").textContent =
-      `Leader: ${leaderWallet} | Score: ${leaderScore} | City: ${leaderCity}`;
-  } catch {
-    document.getElementById("jackpot").textContent = "unavailable";
-    document.getElementById("leader").textContent = "Could not load weekly stats";
-  }
-}
+    function startRanked() {
+      clearPendingGameState();
+      localStorage.setItem("neon99_mode", "ranked");
+      location.href = "/ranked.html";
+    }
 
-loadWeeklyStats();
-setInterval(loadWeeklyStats, 10000);
-</script>
+    async function loadWeeklyStats() {
+      try {
+        const r = await fetch("/api/weekly-winner");
+        const j = await r.json();
 
-<script src="game.js"></script>
+        if (!r.ok || !j.ok) {
+          document.getElementById("jackpot").textContent = "unavailable";
+          document.getElementById("leader").textContent = "Could not load weekly stats";
+          return;
+        }
 
-<script>
-// auto-start selected city
-const selectedCity = localStorage.getItem("neon99_city");
+        document.getElementById("jackpot").textContent =
+          `${Number(j.jackpot_sol || 0).toFixed(3)} SOL`;
 
-if (selectedCity) {
-  setTimeout(() => {
-    window.city(selectedCity);
-  }, 50);
-}
-</script>
+        const leaderWallet = j.leader_wallet ? shortWallet(j.leader_wallet) : "No leader yet";
+        const leaderScore = Number(j.leader_score || 0);
+        const leaderCity = j.leader_city || "—";
+
+        document.getElementById("leader").textContent =
+          `Leader: ${leaderWallet} | Score: ${leaderScore} | City: ${leaderCity}`;
+      } catch {
+        document.getElementById("jackpot").textContent = "unavailable";
+        document.getElementById("leader").textContent = "Could not load weekly stats";
+      }
+    }
+
+    loadWeeklyStats();
+    setInterval(loadWeeklyStats, 10000);
+  </script>
 
 </body>
 </html>
