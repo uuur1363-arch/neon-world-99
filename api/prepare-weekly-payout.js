@@ -1,21 +1,36 @@
 export const runtime = "nodejs";
 
 import { supa, currentWeekKey } from "./_db.js";
-import { requireAdmin } from "./_security.js";
 
 export default async function handler(req, res) {
   try {
     if (req.method !== "POST") {
-      return res.status(405).json({ ok: false, error: "POST only" });
+      return res.status(405).json({
+        ok: false,
+        error: "POST only"
+      });
     }
 
-    const admin = requireAdmin(req);
-    if (!admin.ok) {
-      return res.status(admin.status).json({ ok: false, error: admin.error });
+    const body = req.body || {};
+    const adminSecret = String(body.admin_secret || "").trim();
+    const expectedSecret = String(process.env.ADMIN_SECRET || "").trim();
+    const weekKey = String(body.week_key || currentWeekKey()).trim();
+
+    if (!expectedSecret) {
+      return res.status(500).json({
+        ok: false,
+        error: "ADMIN_SECRET missing"
+      });
+    }
+
+    if (!adminSecret || adminSecret !== expectedSecret) {
+      return res.status(401).json({
+        ok: false,
+        error: "Unauthorized"
+      });
     }
 
     const db = supa();
-    const weekKey = String(req.body?.week_key || currentWeekKey()).trim();
 
     const { data: jackpot, error: jackpotError } = await db
       .from("weekly_jackpots")
@@ -24,41 +39,94 @@ export default async function handler(req, res) {
       .maybeSingle();
 
     if (jackpotError) {
-      return res.status(500).json({ ok: false, error: jackpotError.message || "Failed to read jackpot" });
+      return res.status(500).json({
+        ok: false,
+        error: jackpotError.message || "Failed to read jackpot"
+      });
     }
 
     if (!jackpot) {
-      return res.status(404).json({ ok: false, error: "No jackpot found" });
+      return res.status(404).json({
+        ok: false,
+        error: "No jackpot found"
+      });
     }
 
-    if (jackpot.status !== "closed") {
-      return res.status(400).json({ ok: false, error: "Jackpot must be closed first" });
+    const jackpotStatus = String(jackpot.status || "open");
+    if (jackpotStatus !== "closed" && jackpotStatus !== "open") {
+      return res.status(400).json({
+        ok: false,
+        error: "Invalid jackpot status"
+      });
     }
 
-    const { data: rankedScores, error: scoresError } = await db
-      .from("scores")
-      .select("wallet, score")
-      .eq("mode", "ranked")
-      .eq("verified", true)
-      .eq("week_key", weekKey)
-      .order("score", { ascending: false })
-      .order("created_at", { ascending: true })
-      .limit(1);
+    let rankedScores = null;
+    let scoresError = null;
+
+    {
+      const attempt = await db
+        .from("scores")
+        .select("wallet, score, city, country, mode, created_at")
+        .eq("mode", "ranked")
+        .eq("week_key", weekKey)
+        .eq("verified", true)
+        .order("score", { ascending: false })
+        .order("created_at", { ascending: true })
+        .limit(1);
+
+      rankedScores = attempt.data || null;
+      scoresError = attempt.error || null;
+    }
 
     if (scoresError) {
-      return res.status(500).json({ ok: false, error: scoresError.message || "Failed to read winner" });
+      const msg = String(scoresError.message || "").toLowerCase();
+      const missingColumn =
+        msg.includes("column") ||
+        msg.includes("week_key") ||
+        msg.includes("verified");
+
+      if (!missingColumn) {
+        return res.status(500).json({
+          ok: false,
+          error: scoresError.message || "Failed to read winner"
+        });
+      }
+
+      const legacy = await db
+        .from("scores")
+        .select("wallet, score, city, country, mode, created_at")
+        .eq("mode", "ranked")
+        .order("score", { ascending: false })
+        .order("created_at", { ascending: true })
+        .limit(1);
+
+      if (legacy.error) {
+        return res.status(500).json({
+          ok: false,
+          error: legacy.error.message || "Failed to read winner"
+        });
+      }
+
+      rankedScores = legacy.data || [];
     }
 
     const leader = rankedScores?.[0];
+
     if (!leader?.wallet || Number(leader?.score || 0) <= 0) {
-      return res.status(400).json({ ok: false, error: "No valid winner score found" });
+      return res.status(400).json({
+        ok: false,
+        error: "No valid winner score found"
+      });
     }
 
     const amountLamports = Number(jackpot.total_lamports || 0);
     const amountSol = amountLamports / 1e9;
 
     if (amountLamports <= 0) {
-      return res.status(400).json({ ok: false, error: "No jackpot amount to pay" });
+      return res.status(400).json({
+        ok: false,
+        error: "No jackpot amount to pay"
+      });
     }
 
     const { data: existingJob, error: existingError } = await db
@@ -68,7 +136,10 @@ export default async function handler(req, res) {
       .maybeSingle();
 
     if (existingError) {
-      return res.status(500).json({ ok: false, error: existingError.message || "Failed to read payout job" });
+      return res.status(500).json({
+        ok: false,
+        error: existingError.message || "Failed to read payout job"
+      });
     }
 
     if (existingJob) {
@@ -84,17 +155,42 @@ export default async function handler(req, res) {
       });
     }
 
-    const { error: insertError } = await db.from("payout_jobs").insert({
-      week_key: weekKey,
-      winner_wallet: leader.wallet,
-      amount_lamports: amountLamports,
-      amount_sol: amountSol,
-      status: "pending",
-      updated_at: new Date().toISOString()
-    });
+    const nowIso = new Date().toISOString();
+
+    const { error: insertError } = await db
+      .from("payout_jobs")
+      .insert({
+        week_key: weekKey,
+        winner_wallet: leader.wallet,
+        amount_lamports: amountLamports,
+        amount_sol: amountSol,
+        status: "pending",
+        updated_at: nowIso
+      });
 
     if (insertError) {
-      return res.status(500).json({ ok: false, error: insertError.message || "Failed to create payout job" });
+      return res.status(500).json({
+        ok: false,
+        error: insertError.message || "Failed to create payout job"
+      });
+    }
+
+    const { error: jackpotUpdateError } = await db
+      .from("weekly_jackpots")
+      .update({
+        status: "closed",
+        winner_wallet: leader.wallet,
+        winner_score: Number(leader.score || 0),
+        closed_at: nowIso,
+        updated_at: nowIso
+      })
+      .eq("week_key", weekKey);
+
+    if (jackpotUpdateError) {
+      return res.status(500).json({
+        ok: false,
+        error: jackpotUpdateError.message || "Failed to close jackpot"
+      });
     }
 
     return res.status(200).json({
@@ -107,6 +203,7 @@ export default async function handler(req, res) {
       amount_sol: amountSol,
       status: "pending"
     });
+
   } catch (e) {
     return res.status(500).json({
       ok: false,
