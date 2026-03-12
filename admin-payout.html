@@ -1,399 +1,285 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <title>NEON WORLD '99 — ADMIN PAYOUT</title>
   <style>
     body{
       margin:0;
-      padding:24px 14px 40px;
-      background:#000;
+      padding:24px 16px 36px;
+      background:
+        radial-gradient(circle at top, rgba(255,45,107,.08), transparent 35%),
+        radial-gradient(circle at bottom, rgba(0,212,255,.06), transparent 35%),
+        #000;
       color:#fff;
       font-family:monospace;
       text-align:center;
     }
+
+    h1{
+      color:#ffd166;
+      margin:8px 0 10px;
+      text-shadow:0 0 10px rgba(255,209,102,.20);
+    }
+
     .wrap{
-      max-width:520px;
+      max-width:640px;
       margin:0 auto;
     }
-    h1{
-      color:#00d4ff;
-      margin:8px 0 6px;
-    }
-    .sub{
-      color:rgba(255,255,255,.7);
-      font-size:13px;
-      margin-bottom:18px;
-    }
-    .box{
-      border:1px solid rgba(255,255,255,.14);
-      border-radius:14px;
+
+    .card{
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:16px;
       background:rgba(255,255,255,.03);
-      padding:14px;
-      margin-bottom:14px;
+      padding:18px 16px;
+      margin-bottom:16px;
       text-align:left;
     }
+
     .label{
-      color:#00d4ff;
+      color:#8b8b8b;
       font-size:12px;
-      margin-bottom:6px;
+      margin-bottom:8px;
+      text-transform:uppercase;
+      letter-spacing:.08em;
     }
+
     .value{
-      color:#fff;
       font-size:15px;
+      line-height:1.8;
+      color:#fff;
       word-break:break-word;
     }
-    input, textarea{
+
+    .muted{
+      color:#9a9a9a;
+      font-size:12px;
+      line-height:1.6;
+    }
+
+    .actions{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      margin:18px 0;
+    }
+
+    input{
       width:100%;
       box-sizing:border-box;
-      margin-top:6px;
-      padding:12px;
-      border-radius:10px;
-      border:1px solid rgba(255,255,255,.18);
-      background:rgba(0,0,0,.45);
+      padding:14px 12px;
+      border-radius:12px;
+      border:1px solid #333;
+      background:#111;
       color:#fff;
       font-family:monospace;
       font-size:14px;
+      margin-bottom:10px;
     }
+
     button{
       width:100%;
-      padding:14px 16px;
-      border-radius:12px;
+      padding:16px 14px;
       border:none;
-      background:#00d4ff;
-      color:#000;
+      border-radius:14px;
       font-family:monospace;
+      font-size:15px;
       font-weight:bold;
-      margin-top:10px;
     }
-    .btn2{
-      background:rgba(255,255,255,.06);
-      color:#fff;
-      border:1px solid rgba(255,255,255,.18);
-    }
-    .btn3{
-      background:#a8ff3e;
+
+    .primary{
+      background:#ffd166;
       color:#000;
     }
-    #status{
-      margin-top:12px;
-      min-height:24px;
-      color:#a8ff3e;
-      white-space:pre-line;
+
+    .secondary{
+      background:#111;
+      color:#ddd;
+      border:1px solid #333;
     }
-    #debug{
-      margin-top:12px;
-      min-height:24px;
-      color:#ffd166;
-      white-space:pre-line;
-      text-align:left;
-      font-size:12px;
-      border:1px solid rgba(255,255,255,.12);
-      border-radius:12px;
-      padding:12px;
-      background:rgba(255,255,255,.03);
+
+    .danger{
+      background:#8b1e3f;
+      color:#fff;
     }
-    a{
-      color:#888;
-      text-decoration:none;
+
+    #log{
+      min-height:160px;
+      white-space:pre-wrap;
     }
   </style>
 </head>
 <body>
   <div class="wrap">
     <h1>ADMIN PAYOUT</h1>
-    <div class="sub">Open inside Phantom browser with treasury wallet selected</div>
 
-    <div class="box">
-      <div class="label">TREASURY WALLET</div>
-      <div class="value" id="treasuryWallet">8UH2aQubZ5kjR5PpesoPio4zkAfafoMY5hHuKrPYz6ct</div>
+    <div class="card">
+      <div class="label">Controls</div>
+      <input id="adminSecret" type="password" placeholder="ADMIN_SECRET" />
+      <input id="weekKey" type="text" placeholder="Week key (example: 2026-W11). Leave empty for current week." />
+      <input id="txSignature" type="text" placeholder="Payout tx signature (for mark sent)" />
+      <div class="muted">
+        Flow:<br>
+        1. Load week status<br>
+        2. Prepare payout job<br>
+        3. Send SOL manually from treasury wallet<br>
+        4. Paste tx signature and mark sent
+      </div>
     </div>
 
-    <div class="box">
-      <div class="label">WEEK</div>
-      <div class="value" id="weekKey">Loading...</div>
+    <div class="card">
+      <div class="label">Current Result</div>
+      <div id="result" class="value">No data loaded yet.</div>
     </div>
 
-    <div class="box">
-      <div class="label">WINNER WALLET</div>
-      <div class="value" id="winnerWallet">Loading...</div>
-      <button class="btn2" id="copyWalletBtn" type="button">COPY WINNER WALLET</button>
+    <div class="actions">
+      <button class="secondary" id="loadBtn">LOAD WEEK STATUS</button>
+      <button class="primary" id="prepareBtn">PREPARE WEEKLY PAYOUT</button>
+      <button class="danger" id="markBtn">MARK PAYOUT SENT</button>
+      <button class="secondary" onclick="location.href='/index.html'">HOME</button>
     </div>
 
-    <div class="box">
-      <div class="label">AMOUNT</div>
-      <div class="value" id="amountSol">Loading...</div>
-    </div>
-
-    <div class="box">
-      <div class="label">STATUS</div>
-      <div class="value" id="payoutStatus">Loading...</div>
-    </div>
-
-    <div class="box">
-      <div class="label">ADMIN SECRET</div>
-      <input id="adminSecret" type="password" placeholder="Enter admin secret">
-    </div>
-
-    <div class="box">
-      <div class="label">TRANSACTION SIGNATURE (for manual mark)</div>
-      <textarea id="txSignature" rows="4" placeholder="Paste transaction signature here"></textarea>
-    </div>
-
-    <button id="sendPrizeBtn" type="button">SEND PRIZE</button>
-    <button id="markOnlyBtn" class="btn3" type="button">MARK SENT ONLY</button>
-
-    <div id="status"></div>
-    <div id="debug"></div>
-
-    <div style="margin-top:18px;">
-      <a href="index.html">Back Home</a>
+    <div class="card">
+      <div class="label">System Log</div>
+      <div id="log" class="muted">Admin payout panel ready...</div>
     </div>
   </div>
 
-  <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.js"></script>
   <script>
-    const TREASURY = "8UH2aQubZ5kjR5PpesoPio4zkAfafoMY5hHuKrPYz6ct";
-    const PAYOUT_WEEK_KEY = "2026-W10";
-
-    let currentWeekKey = "";
-    let winnerWallet = "";
-    let amountLamports = 0;
-
-    function setStatus(text, isError = false) {
-      const el = document.getElementById("status");
-      el.style.color = isError ? "#ff6b6b" : "#a8ff3e";
-      el.textContent = text || "";
+    function logLine(msg) {
+      const el = document.getElementById("log");
+      el.textContent += "\n" + msg;
+      el.scrollTop = el.scrollHeight;
     }
 
-    function debug(text) {
-      const el = document.getElementById("debug");
-      el.textContent += (el.textContent ? "\n" : "") + String(text);
+    function getWeekKey() {
+      return String(document.getElementById("weekKey").value || "").trim();
     }
 
-    function getProvider() {
-      if (window.phantom?.solana) return window.phantom.solana;
-      if (window.solana?.isPhantom) return window.solana;
-      if (window.solana) return window.solana;
-      return null;
+    function getAdminSecret() {
+      return String(document.getElementById("adminSecret").value || "").trim();
     }
 
-    async function loadPayoutStatus() {
-      setStatus("Loading payout...");
-      debug("Loading /api/payout-status for " + PAYOUT_WEEK_KEY);
+    function getTxSignature() {
+      return String(document.getElementById("txSignature").value || "").trim();
+    }
 
+    function setResult(obj) {
+      document.getElementById("result").textContent = JSON.stringify(obj, null, 2);
+    }
+
+    async function loadWeekStatus() {
       try {
-        const r = await fetch(`/api/payout-status?week_key=${encodeURIComponent(PAYOUT_WEEK_KEY)}`);
+        const weekKey = getWeekKey();
+        const url = weekKey
+          ? `/api/weekly-winner?week_key=${encodeURIComponent(weekKey)}`
+          : "/api/weekly-winner";
+
+        const r = await fetch(url);
         const j = await r.json();
 
-        debug("payout-status response: " + JSON.stringify(j));
+        if (!r.ok || !j.ok) {
+          throw new Error(j.error || "Failed to load weekly status");
+        }
+
+        setResult(j);
+        logLine("Week status loaded");
+      } catch (e) {
+        logLine("Load failed: " + String(e.message || e));
+        alert("Load failed:\n" + String(e.message || e));
+      }
+    }
+
+    async function preparePayout() {
+      try {
+        const adminSecret = getAdminSecret();
+        if (!adminSecret) {
+          alert("ADMIN_SECRET required");
+          return;
+        }
+
+        const body = {
+          admin_secret: adminSecret
+        };
+
+        const weekKey = getWeekKey();
+        if (weekKey) {
+          body.week_key = weekKey;
+        }
+
+        const r = await fetch("/api/prepare-weekly-payout", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(body)
+        });
+
+        const j = await r.json();
 
         if (!r.ok || !j.ok) {
-          throw new Error(j.error || "Failed to load payout");
+          throw new Error(j.error || "Failed to prepare payout");
         }
 
-        if (!j.exists) {
-          throw new Error("No payout job exists for this week");
-        }
-
-        currentWeekKey = String(j.week_key || "");
-        winnerWallet = String(j.winner_wallet || "");
-        amountLamports = Number(j.amount_lamports || 0);
-
-        document.getElementById("weekKey").textContent = currentWeekKey || "N/A";
-        document.getElementById("winnerWallet").textContent = winnerWallet || "N/A";
-        document.getElementById("amountSol").textContent = `${Number(j.amount_sol || 0).toFixed(3)} SOL`;
-        document.getElementById("payoutStatus").textContent = j.status || "unknown";
-
-        if (j.tx_signature) {
-          document.getElementById("txSignature").value = j.tx_signature;
-        }
-
-        if (j.status === "sent" && j.tx_signature) {
-          setStatus(`Already sent.\nTX: ${j.tx_signature}`);
-        } else {
-          setStatus("Payout is pending.");
-        }
+        setResult(j);
+        logLine("Payout prepared");
       } catch (e) {
-        setStatus(String(e.message || e), true);
-        debug("load error: " + String(e.message || e));
+        logLine("Prepare failed: " + String(e.message || e));
+        alert("Prepare failed:\n" + String(e.message || e));
       }
     }
 
-    document.getElementById("copyWalletBtn").onclick = async () => {
+    async function markPayoutSent() {
       try {
-        await navigator.clipboard.writeText(winnerWallet || "");
-        setStatus("Winner wallet copied.");
-        debug("Winner wallet copied");
-      } catch (e) {
-        setStatus("Could not copy wallet.", true);
-        debug("copy error: " + String(e.message || e));
-      }
-    };
+        const adminSecret = getAdminSecret();
+        const txSignature = getTxSignature();
 
-    async function markSentOnly(signature) {
-      const adminSecret = document.getElementById("adminSecret").value.trim();
-
-      if (!adminSecret) {
-        setStatus("Admin secret required.", true);
-        debug("Admin secret missing for mark-only");
-        return;
-      }
-
-      if (!signature) {
-        setStatus("Transaction signature required.", true);
-        debug("Signature missing for mark-only");
-        return;
-      }
-
-      debug("Calling /api/mark-payout-sent with signature: " + signature);
-
-      const r = await fetch("/api/mark-payout-sent", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          week_key: currentWeekKey,
-          tx_signature: signature,
-          admin_secret: adminSecret
-        })
-      });
-
-      const j = await r.json();
-      debug("mark-payout-sent response: " + JSON.stringify(j));
-
-      if (!r.ok || !j.ok) {
-        throw new Error(j.error || "Failed to mark payout as sent");
-      }
-
-      setStatus(`Payout marked as sent.\nTX: ${signature}`);
-      await loadPayoutStatus();
-    }
-
-    async function sendPrize() {
-      debug("SEND PRIZE clicked");
-
-      const adminSecret = document.getElementById("adminSecret").value.trim();
-
-      if (!adminSecret) {
-        setStatus("Admin secret required.", true);
-        debug("Admin secret missing");
-        return;
-      }
-
-      if (!winnerWallet) {
-        setStatus("Winner wallet missing.", true);
-        debug("Winner wallet missing");
-        return;
-      }
-
-      if (!amountLamports || amountLamports <= 0) {
-        setStatus("Invalid payout amount.", true);
-        debug("Invalid payout amount");
-        return;
-      }
-
-      const provider = getProvider();
-      debug("Provider exists: " + !!provider);
-
-      if (!provider) {
-        setStatus("Open this page inside Phantom browser.", true);
-        debug("No Phantom provider found");
-        return;
-      }
-
-      const btn = document.getElementById("sendPrizeBtn");
-      btn.disabled = true;
-      btn.textContent = "CONNECTING...";
-
-      try {
-        debug("Connecting Phantom...");
-        const connected = await provider.connect();
-        const connectedWallet = String((connected?.publicKey || provider.publicKey || "").toString());
-        debug("Connected wallet: " + connectedWallet);
-
-        if (connectedWallet !== TREASURY) {
-          throw new Error("Connected Phantom wallet is not the treasury wallet.");
+        if (!adminSecret) {
+          alert("ADMIN_SECRET required");
+          return;
         }
 
-        btn.textContent = "PREPARING...";
-        debug("Creating connection to /api/solana-rpc");
-
-        const connection = new solanaWeb3.Connection(
-          `${location.origin}/api/solana-rpc`,
-          "confirmed"
-        );
-
-        const latest = await connection.getLatestBlockhash("confirmed");
-        debug("Latest blockhash loaded");
-
-        const tx = new solanaWeb3.Transaction().add(
-          solanaWeb3.SystemProgram.transfer({
-            fromPubkey: provider.publicKey,
-            toPubkey: new solanaWeb3.PublicKey(winnerWallet),
-            lamports: amountLamports
-          })
-        );
-
-        tx.feePayer = provider.publicKey;
-        tx.recentBlockhash = latest.blockhash;
-
-        btn.textContent = "WAITING FOR APPROVAL...";
-        debug("Calling signAndSendTransaction...");
-
-        const sendResult = await provider.signAndSendTransaction(tx);
-        const signature =
-          typeof sendResult === "string"
-            ? sendResult
-            : sendResult.signature;
-
-        debug("Signature: " + signature);
-
-        if (!signature) {
-          throw new Error("No transaction signature returned");
+        if (!txSignature) {
+          alert("tx signature required");
+          return;
         }
 
-        document.getElementById("txSignature").value = signature;
+        const body = {
+          admin_secret: adminSecret,
+          tx_signature: txSignature
+        };
 
-        btn.textContent = "CONFIRMING...";
-        debug("Confirming transaction...");
+        const weekKey = getWeekKey();
+        if (weekKey) {
+          body.week_key = weekKey;
+        }
 
-        await connection.confirmTransaction(
-          {
-            signature,
-            blockhash: latest.blockhash,
-            lastValidBlockHeight: latest.lastValidBlockHeight
+        const r = await fetch("/api/mark-payout-sent", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
           },
-          "confirmed"
-        );
+          body: JSON.stringify(body)
+        });
 
-        btn.textContent = "SAVING...";
-        await markSentOnly(signature);
+        const j = await r.json();
+
+        if (!r.ok || !j.ok) {
+          throw new Error(j.error || "Failed to mark payout sent");
+        }
+
+        setResult(j);
+        logLine("Payout marked sent");
       } catch (e) {
-        setStatus(String(e.message || e), true);
-        debug("sendPrize error: " + String(e.message || e));
-      } finally {
-        btn.disabled = false;
-        btn.textContent = "SEND PRIZE";
+        logLine("Mark failed: " + String(e.message || e));
+        alert("Mark failed:\n" + String(e.message || e));
       }
     }
 
-    async function handleMarkOnly() {
-      try {
-        const signature = document.getElementById("txSignature").value.trim();
-        await markSentOnly(signature);
-      } catch (e) {
-        setStatus(String(e.message || e), true);
-        debug("markOnly error: " + String(e.message || e));
-      }
-    }
-
-    document.getElementById("sendPrizeBtn").onclick = sendPrize;
-    document.getElementById("markOnlyBtn").onclick = handleMarkOnly;
-
-    debug("Page loaded");
-    loadPayoutStatus();
+    document.getElementById("loadBtn").addEventListener("click", loadWeekStatus);
+    document.getElementById("prepareBtn").addEventListener("click", preparePayout);
+    document.getElementById("markBtn").addEventListener("click", markPayoutSent);
   </script>
 </body>
 </html>
