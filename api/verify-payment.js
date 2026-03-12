@@ -44,6 +44,13 @@ export default async function handler(req, res) {
       });
     }
 
+    if (tx.meta?.err) {
+      return res.status(400).json({
+        ok: false,
+        error: "Transaction failed"
+      });
+    }
+
     const feePayer = tx.transaction?.message?.accountKeys?.[0]?.pubkey?.toString();
     if (!feePayer || feePayer !== wallet) {
       return res.status(400).json({
@@ -73,10 +80,15 @@ export default async function handler(req, res) {
 
       if (ix.program === "system" && ix.parsed?.type === "transfer") {
         const info = ix.parsed.info || {};
-        const dest = info.destination;
+        const source = String(info.source || "");
+        const dest = String(info.destination || "");
         const lamports = Number(info.lamports || 0);
 
-        if (dest === treasuryPk.toString() && lamports >= needLamports) {
+        if (
+          source === wallet &&
+          dest === treasuryPk.toString() &&
+          lamports >= needLamports
+        ) {
           transferOk = true;
         }
       }
@@ -179,14 +191,21 @@ export default async function handler(req, res) {
     const weekKey = currentWeekKey();
     const jackpotLamports = 3000000; // 0.003 SOL
 
-    const { data: existingJackpot } = await db
+    const { data: existingJackpot, error: jackpotReadError } = await db
       .from("weekly_jackpots")
       .select("id, total_lamports, entry_count")
       .eq("week_key", weekKey)
       .maybeSingle();
 
+    if (jackpotReadError) {
+      return res.status(500).json({
+        ok: false,
+        error: jackpotReadError.message || "Failed to read jackpot"
+      });
+    }
+
     if (existingJackpot) {
-      await db
+      const { error: jackpotUpdateError } = await db
         .from("weekly_jackpots")
         .update({
           total_lamports: Number(existingJackpot.total_lamports || 0) + jackpotLamports,
@@ -194,8 +213,15 @@ export default async function handler(req, res) {
           updated_at: new Date().toISOString()
         })
         .eq("week_key", weekKey);
+
+      if (jackpotUpdateError) {
+        return res.status(500).json({
+          ok: false,
+          error: jackpotUpdateError.message || "Failed to update jackpot"
+        });
+      }
     } else {
-      await db
+      const { error: jackpotInsertError } = await db
         .from("weekly_jackpots")
         .insert({
           week_key: weekKey,
@@ -204,6 +230,13 @@ export default async function handler(req, res) {
           status: "open",
           updated_at: new Date().toISOString()
         });
+
+      if (jackpotInsertError) {
+        return res.status(500).json({
+          ok: false,
+          error: jackpotInsertError.message || "Failed to create jackpot"
+        });
+      }
     }
 
     return res.status(200).json({
