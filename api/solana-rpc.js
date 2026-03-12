@@ -1,7 +1,19 @@
 export const runtime = "nodejs";
 
+import { rateLimit, getIp } from "./_security.js";
+
 export default async function handler(req, res) {
   try {
+    const ip = getIp(req);
+    const gate = rateLimit(`solana-rpc:${ip}`, 60, 60 * 1000);
+
+    if (!gate.ok) {
+      return res.status(429).json({
+        ok: false,
+        error: "Too many RPC requests"
+      });
+    }
+
     const rpcUrl = String(
       process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com"
     ).trim();
@@ -30,6 +42,7 @@ export default async function handler(req, res) {
       });
 
       const text = await upstream.text();
+
       res.status(upstream.status);
       res.setHeader("Content-Type", "application/json; charset=utf-8");
       return res.send(text);
