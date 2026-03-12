@@ -103,7 +103,7 @@
     }
 
     #log{
-      min-height:120px;
+      min-height:160px;
       white-space:pre-wrap;
     }
   </style>
@@ -207,7 +207,7 @@
 
       try {
         const conn = new solanaWeb3.Connection(url, "confirmed");
-        await conn.getLatestBlockhash("confirmed");
+        await conn.getLatestBlockhash("finalized");
         logLine("Using RPC: " + url);
         return conn;
       } catch (e) {
@@ -310,24 +310,21 @@
 
         tx.feePayer = new solanaWeb3.PublicKey(wallet);
 
-        const latest = await connection.getLatestBlockhash("confirmed");
+        const latest = await connection.getLatestBlockhash("finalized");
         tx.recentBlockhash = latest.blockhash;
+        tx.lastValidBlockHeight = latest.lastValidBlockHeight;
 
         logLine("Requesting Phantom signature...");
         const signed = await window.solana.signTransaction(tx);
 
         logLine("Sending transaction...");
         const signature = await connection.sendRawTransaction(signed.serialize(), {
-          skipPreflight: false,
-          preflightCommitment: "confirmed"
+          skipPreflight: true,
+          maxRetries: 5
         });
 
         logLine("Waiting confirmation...");
-        await connection.confirmTransaction({
-          signature,
-          blockhash: latest.blockhash,
-          lastValidBlockHeight: latest.lastValidBlockHeight
-        }, "confirmed");
+        await connection.confirmTransaction(signature, "confirmed");
 
         logLine("Verifying payment on backend...");
         const verifyResp = await fetch("/api/verify-payment", {
@@ -394,7 +391,7 @@
           window.location.origin + "/api/solana-rpc",
           "confirmed"
         );
-        await testConn.getLatestBlockhash("confirmed");
+        await testConn.getLatestBlockhash("finalized");
         logLine("Server RPC ready");
       } catch (e) {
         logLine("Server RPC failed: " + String(e.message || e));
