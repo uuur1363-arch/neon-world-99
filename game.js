@@ -1,22 +1,23 @@
 // NEON WORLD '99 — FINAL GAME.JS
-// Ranked pass, anti-cheat run token, share score, jackpot share, result screen, full city theme map
+// smoother input, anti-cheat run token, share score, jackpot share,
+// full city theme map, city difficulty profiles, retro 90s arcade feel
 
 // ---------------- CONFIG ----------------
 const GAME_SECONDS = 60;
 const SITE_URL = "https://neon-world-99.vercel.app";
 
-// Unlock thresholds
+// Easier unlock progression for a 60-second arcade loop
 const UNLOCKS = [
   { name: "New York", need: 0 },
-  { name: "Tokyo", need: 10000 },
-  { name: "Berlin", need: 25000 },
-  { name: "Rio", need: 50000 },
-  { name: "Seoul", need: 80000 },
-  { name: "London", need: 120000 },
-  { name: "Paris", need: 170000 },
-  { name: "Dubai", need: 230000 },
-  { name: "Singapore", need: 300000 },
-  { name: "Istanbul", need: 380000 }
+  { name: "Tokyo", need: 300 },
+  { name: "Berlin", need: 700 },
+  { name: "Rio", need: 1200 },
+  { name: "Seoul", need: 1800 },
+  { name: "London", need: 2500 },
+  { name: "Paris", need: 3300 },
+  { name: "Dubai", need: 4200 },
+  { name: "Singapore", need: 5200 },
+  { name: "Istanbul", need: 6500 }
 ];
 
 const CITY_THEMES = {
@@ -26,8 +27,17 @@ const CITY_THEMES = {
     music: "/bgm_ny.mp3",
     musicFallback: "/bgm_ny.mp3",
     accent: "#00d4ff",
-    note: "rgba(255,45,107,0.8)",
-    lane: "rgba(0,212,255,0.08)"
+    note: "rgba(255,45,107,0.82)",
+    lane: "rgba(0,212,255,0.08)",
+    line: "rgba(0,212,255,0.72)",
+    profile: {
+      bpmStart: 112,
+      bpmMin: 88,
+      bpmMax: 145,
+      noteSpeedBase: 165,
+      noteSpeedScale: 1.0,
+      tempoBonusScale: 9
+    }
   },
   "Tokyo": {
     bg: "/bg_tokyo.jpg",
@@ -35,8 +45,17 @@ const CITY_THEMES = {
     music: "/bgm_tokyo.mp3",
     musicFallback: "/bgm_ny.mp3",
     accent: "#ff4fd8",
-    note: "rgba(0,212,255,0.85)",
-    lane: "rgba(255,79,216,0.08)"
+    note: "rgba(0,212,255,0.86)",
+    lane: "rgba(255,79,216,0.08)",
+    line: "rgba(255,79,216,0.74)",
+    profile: {
+      bpmStart: 118,
+      bpmMin: 92,
+      bpmMax: 152,
+      noteSpeedBase: 172,
+      noteSpeedScale: 1.05,
+      tempoBonusScale: 9.5
+    }
   },
   "Berlin": {
     bg: "/bg_berlin.jpg",
@@ -44,8 +63,17 @@ const CITY_THEMES = {
     music: "/bgm_berlin.mp3",
     musicFallback: "/bgm_ny.mp3",
     accent: "#a8ff3e",
-    note: "rgba(168,255,62,0.8)",
-    lane: "rgba(168,255,62,0.08)"
+    note: "rgba(168,255,62,0.84)",
+    lane: "rgba(168,255,62,0.08)",
+    line: "rgba(168,255,62,0.72)",
+    profile: {
+      bpmStart: 122,
+      bpmMin: 95,
+      bpmMax: 158,
+      noteSpeedBase: 178,
+      noteSpeedScale: 1.08,
+      tempoBonusScale: 10
+    }
   },
   "Rio": {
     bg: "/bg_rio.jpg",
@@ -53,8 +81,17 @@ const CITY_THEMES = {
     music: "/bgm_pulse.mp3",
     musicFallback: "/bgm_ny.mp3",
     accent: "#ffd166",
-    note: "rgba(255,209,102,0.85)",
-    lane: "rgba(255,209,102,0.08)"
+    note: "rgba(255,209,102,0.86)",
+    lane: "rgba(255,209,102,0.08)",
+    line: "rgba(255,209,102,0.75)",
+    profile: {
+      bpmStart: 124,
+      bpmMin: 96,
+      bpmMax: 162,
+      noteSpeedBase: 182,
+      noteSpeedScale: 1.1,
+      tempoBonusScale: 10.5
+    }
   },
   "Seoul": {
     bg: "/bg_seoul.jpg",
@@ -62,8 +99,17 @@ const CITY_THEMES = {
     music: "/bgm_pulse.mp3",
     musicFallback: "/bgm_tokyo.mp3",
     accent: "#7afcff",
-    note: "rgba(122,252,255,0.85)",
-    lane: "rgba(122,252,255,0.08)"
+    note: "rgba(122,252,255,0.87)",
+    lane: "rgba(122,252,255,0.08)",
+    line: "rgba(122,252,255,0.76)",
+    profile: {
+      bpmStart: 126,
+      bpmMin: 98,
+      bpmMax: 165,
+      noteSpeedBase: 186,
+      noteSpeedScale: 1.12,
+      tempoBonusScale: 10.8
+    }
   },
   "London": {
     bg: "/bg_london.jpg",
@@ -71,8 +117,17 @@ const CITY_THEMES = {
     music: "/bgm_midnight.mp3",
     musicFallback: "/bgm_berlin.mp3",
     accent: "#c8b6ff",
-    note: "rgba(200,182,255,0.85)",
-    lane: "rgba(200,182,255,0.08)"
+    note: "rgba(200,182,255,0.87)",
+    lane: "rgba(200,182,255,0.08)",
+    line: "rgba(200,182,255,0.76)",
+    profile: {
+      bpmStart: 128,
+      bpmMin: 100,
+      bpmMax: 168,
+      noteSpeedBase: 190,
+      noteSpeedScale: 1.15,
+      tempoBonusScale: 11.2
+    }
   },
   "Paris": {
     bg: "/bg_paris.jpg",
@@ -80,8 +135,17 @@ const CITY_THEMES = {
     music: "/bgm_midnight.mp3",
     musicFallback: "/bgm_ny.mp3",
     accent: "#ff99c8",
-    note: "rgba(255,153,200,0.85)",
-    lane: "rgba(255,153,200,0.08)"
+    note: "rgba(255,153,200,0.87)",
+    lane: "rgba(255,153,200,0.08)",
+    line: "rgba(255,153,200,0.76)",
+    profile: {
+      bpmStart: 130,
+      bpmMin: 102,
+      bpmMax: 170,
+      noteSpeedBase: 194,
+      noteSpeedScale: 1.18,
+      tempoBonusScale: 11.5
+    }
   },
   "Dubai": {
     bg: "/bg_dubai.jpg",
@@ -89,8 +153,17 @@ const CITY_THEMES = {
     music: "/bgm_lux.mp3",
     musicFallback: "/bgm_ny.mp3",
     accent: "#f8e16c",
-    note: "rgba(248,225,108,0.85)",
-    lane: "rgba(248,225,108,0.08)"
+    note: "rgba(248,225,108,0.88)",
+    lane: "rgba(248,225,108,0.08)",
+    line: "rgba(248,225,108,0.78)",
+    profile: {
+      bpmStart: 134,
+      bpmMin: 104,
+      bpmMax: 174,
+      noteSpeedBase: 198,
+      noteSpeedScale: 1.2,
+      tempoBonusScale: 12
+    }
   },
   "Singapore": {
     bg: "/bg_singapore.jpg",
@@ -98,8 +171,17 @@ const CITY_THEMES = {
     music: "/bgm_lux.mp3",
     musicFallback: "/bgm_ny.mp3",
     accent: "#8be9fd",
-    note: "rgba(139,233,253,0.85)",
-    lane: "rgba(139,233,253,0.08)"
+    note: "rgba(139,233,253,0.88)",
+    lane: "rgba(139,233,253,0.08)",
+    line: "rgba(139,233,253,0.78)",
+    profile: {
+      bpmStart: 138,
+      bpmMin: 106,
+      bpmMax: 178,
+      noteSpeedBase: 202,
+      noteSpeedScale: 1.24,
+      tempoBonusScale: 12.5
+    }
   },
   "Istanbul": {
     bg: "/bg_istanbul.jpg",
@@ -107,8 +189,17 @@ const CITY_THEMES = {
     music: "/bgm_lux.mp3",
     musicFallback: "/bgm_ny.mp3",
     accent: "#ffb703",
-    note: "rgba(255,183,3,0.85)",
-    lane: "rgba(255,183,3,0.08)"
+    note: "rgba(255,183,3,0.89)",
+    lane: "rgba(255,183,3,0.08)",
+    line: "rgba(255,183,3,0.8)",
+    profile: {
+      bpmStart: 142,
+      bpmMin: 108,
+      bpmMax: 182,
+      noteSpeedBase: 208,
+      noteSpeedScale: 1.28,
+      tempoBonusScale: 13
+    }
   }
 };
 
@@ -164,17 +255,30 @@ let bestScore = loadBest();
 let currentRunToken = "";
 
 // ---------------- SFX ----------------
-const sHit = new Audio("/hit.mp3");
-const sMiss = new Audio("/miss.mp3");
-const sCombo = new Audio("/combo.mp3");
+function makeAudioPool(src, size = 4) {
+  const pool = Array.from({ length: size }, () => {
+    const a = new Audio(src);
+    a.preload = "auto";
+    return a;
+  });
+  let i = 0;
 
-function playSfx(a) {
-  try {
-    a.currentTime = 0;
-    const p = a.play();
-    if (p && p.catch) p.catch(() => {});
-  } catch {}
+  return {
+    play() {
+      try {
+        const a = pool[i];
+        i = (i + 1) % pool.length;
+        a.currentTime = 0;
+        const p = a.play();
+        if (p && p.catch) p.catch(() => {});
+      } catch {}
+    }
+  };
 }
+
+const sHitPool = makeAudioPool("/hit.mp3", 4);
+const sMissPool = makeAudioPool("/miss.mp3", 3);
+const sComboPool = makeAudioPool("/combo.mp3", 3);
 
 // ---------------- HELPERS ----------------
 function getCityTheme(city) {
@@ -203,7 +307,7 @@ function fileExists(url) {
     a.addEventListener("error", () => finish(false), { once: true });
     a.src = url;
 
-    setTimeout(() => finish(false), 1200);
+    setTimeout(() => finish(false), 1000);
   });
 }
 
@@ -222,8 +326,16 @@ function imageExists(url) {
     img.onerror = () => finish(false);
     img.src = url;
 
-    setTimeout(() => finish(false), 1200);
+    setTimeout(() => finish(false), 1000);
   });
+}
+
+function retroCalloutFromCombo(combo, hit) {
+  if (!hit) return "MISS";
+  if (combo >= 30) return "RADICAL";
+  if (combo >= 20) return "TUBULAR";
+  if (combo >= 10) return "GREAT";
+  return "PERFECT";
 }
 
 // ---------------- MUSIC ----------------
@@ -244,7 +356,7 @@ async function startMusicGesture() {
     const musicUrl = await musicForCity(currentCity);
     bgm = new Audio(musicUrl);
     bgm.loop = true;
-    bgm.volume = 0.4;
+    bgm.volume = 0.38;
 
     const p = bgm.play();
     bgmStarted = true;
@@ -267,13 +379,12 @@ function stopMusic() {
       bgm = null;
     }
   } catch {}
-
   bgmStarted = false;
 }
 
 function armMusicOnFirstTap() {
   const once = () => startMusicGesture();
-  document.addEventListener("click", once, { once: true });
+  document.addEventListener("pointerdown", once, { once: true });
   document.addEventListener("touchstart", once, { once: true, passive: true });
 }
 
@@ -440,38 +551,38 @@ async function startGame() {
   const theme = getCityTheme(currentCity);
 
   document.body.innerHTML = `
-    <div style="text-align:center; padding:16px; color:#fff; font-family:monospace; backdrop-filter: blur(2px);">
-      <h1 style="color:${theme.accent}; margin:10px 0;">NEON WORLD '99</h1>
-      <div style="color:rgba(255,255,255,.85); font-size:12px;">
-        CITY: <b>${escapeHtml(currentCity)}</b> · TAP to hit
+    <div style="text-align:center; padding:16px; color:#fff; font-family:monospace;">
+      <h1 style="color:${theme.accent}; margin:10px 0; text-shadow:0 0 12px ${theme.accent};">NEON WORLD '99</h1>
+      <div style="color:rgba(255,255,255,.86); font-size:12px; letter-spacing:.5px;">
+        STAGE: <b>${escapeHtml(currentCity.toUpperCase())}</b> · TAP TO HIT
       </div>
 
       <div style="display:flex; justify-content:center; gap:14px; margin:10px 0; flex-wrap:wrap;">
-        <div style="color:rgba(255,255,255,.85); font-size:12px;">TIME <b id="t">${GAME_SECONDS}</b></div>
-        <div style="color:rgba(255,255,255,.85); font-size:12px;">SCORE <b id="s">0</b></div>
-        <div style="color:rgba(255,255,255,.85); font-size:12px;">COMBO <b id="c">x0</b></div>
-        <div style="color:rgba(255,255,255,.85); font-size:12px;">BEST <b id="b">${bestScore}</b></div>
+        <div style="color:rgba(255,255,255,.88); font-size:12px;">TIME <b id="t">${GAME_SECONDS}</b></div>
+        <div style="color:rgba(255,255,255,.88); font-size:12px;">SCORE <b id="s">0</b></div>
+        <div style="color:rgba(255,255,255,.88); font-size:12px;">COMBO <b id="c">x0</b></div>
+        <div style="color:rgba(255,255,255,.88); font-size:12px;">BEST <b id="b">${bestScore}</b></div>
       </div>
 
       <canvas id="cv" width="390" height="600"
-        style="width:100%; max-width:420px; border:1px solid rgba(255,255,255,.12); border-radius:12px; background:rgba(0,0,0,.45);"></canvas>
+        style="width:100%; max-width:420px; border:1px solid rgba(255,255,255,.14); border-radius:12px; background:rgba(0,0,0,.36); touch-action:manipulation;"></canvas>
 
       <div style="margin-top:10px; display:flex; gap:10px; justify-content:center;">
         <button id="exit"
-          style="padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,.25); background:rgba(0,0,0,.4); color:#fff; font-family:monospace;">
+          style="padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,.25); background:rgba(0,0,0,.42); color:#fff; font-family:monospace;">
           BACK TO CITIES
         </button>
         <button id="playMusic"
-          style="padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,.25); background:rgba(0,0,0,.4); color:#fff; font-family:monospace;">
+          style="padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,.25); background:rgba(0,0,0,.42); color:#fff; font-family:monospace;">
           PLAY MUSIC
         </button>
       </div>
 
-      <div style="margin-top:10px; color:rgba(255,255,255,.8); font-size:12px;">
-        Swipe L/R = tempo · Hold = reverse
+      <div style="margin-top:10px; color:rgba(255,255,255,.82); font-size:12px;">
+        SWIPE L/R = TEMPO · HOLD = REVERSE
       </div>
-      <div style="margin-top:6px; color:rgba(255,255,255,.55); font-size:11px;">
-        Mobile rule: music starts only after your tap
+      <div style="margin-top:6px; color:rgba(255,255,255,.58); font-size:11px;">
+        90s ARCADE RULE: MUSIC STARTS AFTER YOUR TAP
       </div>
     </div>
   `;
@@ -547,10 +658,11 @@ async function showEndScreen(finalScore, unlocked, modeNow) {
   const theme = getCityTheme(currentCity);
 
   document.body.innerHTML = `
-    <div style="text-align:center; padding:24px 16px 40px; color:#fff; font-family:monospace; min-height:100vh; box-sizing:border-box; backdrop-filter: blur(2px);">
-      <h1 style="color:${theme.accent}; margin:10px 0 8px;">RUN COMPLETE</h1>
+    <div style="text-align:center; padding:24px 16px 40px; color:#fff; font-family:monospace; min-height:100vh; box-sizing:border-box;">
+      <div style="color:rgba(255,255,255,.72); font-size:12px; letter-spacing:1px;">STAGE CLEAR</div>
+      <h1 style="color:${theme.accent}; margin:10px 0 8px; text-shadow:0 0 12px ${theme.accent};">RUN COMPLETE</h1>
 
-      <div style="max-width:420px; margin:0 auto; border:1px solid rgba(255,255,255,.14); border-radius:14px; background:rgba(0,0,0,.45); padding:18px;">
+      <div style="max-width:420px; margin:0 auto; border:1px solid rgba(255,255,255,.14); border-radius:14px; background:rgba(0,0,0,.46); padding:18px;">
         <div style="color:rgba(255,255,255,.7); font-size:12px;">MODE</div>
         <div style="font-size:24px; color:${modeNow === "ranked" ? "#ff2d6b" : "#a8ff3e"}; margin-bottom:14px;">
           ${escapeHtml(modeNow.toUpperCase())}
@@ -584,12 +696,12 @@ async function showEndScreen(finalScore, unlocked, modeNow) {
         </button>
 
         <button id="playAgainBtn"
-          style="width:100%; max-width:420px; padding:14px 16px; border-radius:12px; border:1px solid rgba(255,255,255,.25); background:rgba(0,0,0,.4); color:#fff; font-family:monospace;">
-          PLAY AGAIN
+          style="width:100%; max-width:420px; padding:14px 16px; border-radius:12px; border:1px solid rgba(255,255,255,.25); background:rgba(0,0,0,.42); color:#fff; font-family:monospace;">
+          INSERT COIN AGAIN
         </button>
 
         <button id="homeBtn"
-          style="width:100%; max-width:420px; padding:14px 16px; border-radius:12px; border:1px solid rgba(255,255,255,.25); background:rgba(0,0,0,.4); color:#fff; font-family:monospace;">
+          style="width:100%; max-width:420px; padding:14px 16px; border-radius:12px; border:1px solid rgba(255,255,255,.25); background:rgba(0,0,0,.42); color:#fff; font-family:monospace;">
           HOME
         </button>
       </div>
@@ -622,15 +734,17 @@ async function showEndScreen(finalScore, unlocked, modeNow) {
 // ---------------- GAME LOOP ----------------
 function runMiniGame() {
   const cv = document.getElementById("cv");
-  const ctx = cv.getContext("2d");
+  const ctx = cv.getContext("2d", { alpha: false });
   const W = cv.width;
   const H = cv.height;
+  const theme = getCityTheme(currentCity);
+  const profile = theme.profile;
 
   let tLeft = GAME_SECONDS;
   let score = 0;
   let combo = 0;
 
-  let bpm = 120;
+  let bpm = profile.bpmStart;
   let reverse = false;
 
   const notes = [];
@@ -647,7 +761,7 @@ function runMiniGame() {
     const dx = x - sx;
 
     if (Math.abs(dx) > 30) {
-      bpm = clamp(bpm + (dx > 0 ? 6 : -6), 80, 170);
+      bpm = clamp(bpm + (dx > 0 ? 6 : -6), profile.bpmMin, profile.bpmMax);
       sx = x;
     }
   }, { passive: true });
@@ -656,15 +770,14 @@ function runMiniGame() {
     sx = null;
   }, { passive: true });
 
-  cv.addEventListener("click", onTap);
-
   let holdTimer = null;
-  cv.addEventListener("mousedown", () => {
+
+  const holdStart = () => {
     holdTimer = setTimeout(() => {
       reverse = true;
       flash("REVERSE");
     }, 220);
-  });
+  };
 
   const holdEnd = () => {
     if (holdTimer) clearTimeout(holdTimer);
@@ -672,44 +785,58 @@ function runMiniGame() {
     reverse = false;
   };
 
+  cv.addEventListener("mousedown", holdStart);
   cv.addEventListener("mouseup", holdEnd);
   cv.addEventListener("mouseleave", holdEnd);
+  cv.addEventListener("touchstart", holdStart, { passive: true });
+  cv.addEventListener("touchend", holdEnd, { passive: true });
 
   let msg = "";
   let msgT = 0;
 
   function flash(s) {
     msg = s;
-    msgT = 0.8;
+    msgT = 0.72;
   }
 
-  function onTap() {
+  function onTap(e) {
+    if (e && e.cancelable) e.preventDefault();
     startMusicGesture();
 
     const hitY = H * 0.78;
-    const idx = notes.findIndex((n) => Math.abs(n.y - hitY) < 18);
+    let bestIdx = -1;
+    let bestDist = 99999;
 
-    if (idx >= 0) {
-      notes.splice(idx, 1);
+    for (let i = 0; i < notes.length; i++) {
+      const d = Math.abs(notes[i].y - hitY);
+      if (d < bestDist) {
+        bestDist = d;
+        bestIdx = i;
+      }
+    }
+
+    if (bestIdx >= 0 && bestDist < 22) {
+      notes.splice(bestIdx, 1);
       combo++;
       score += 200 + combo * 10;
-      flash("PERFECT");
+      flash(retroCalloutFromCombo(combo, true));
 
-      playSfx(sHit);
-      if (combo % 10 === 0) playSfx(sCombo);
+      sHitPool.play();
+      if (combo % 10 === 0) sComboPool.play();
     } else {
       combo = Math.max(0, combo - 2);
       score = Math.max(0, score - 80);
-      flash("MISS");
-
-      playSfx(sMiss);
+      flash(retroCalloutFromCombo(combo, false));
+      sMissPool.play();
     }
   }
+
+  cv.addEventListener("pointerdown", onTap, { passive: false });
 
   let last = performance.now();
 
   function loop(now) {
-    const dt = Math.min(0.033, (now - last) / 1000);
+    const dt = Math.min(0.028, (now - last) / 1000);
     last = now;
 
     tLeft -= dt;
@@ -717,32 +844,33 @@ function runMiniGame() {
 
     const bps = bpm / 60;
     spawnAcc += bps * dt;
+
     if (spawnAcc >= 1) {
       spawnAcc -= 1;
       notes.push({
         y: -20,
-        speed: 180 + (bpm - 110) * 1.2
+        speed: profile.noteSpeedBase + (bpm - 110) * profile.noteSpeedScale
       });
     }
 
-    for (const n of notes) {
-      n.y += (reverse ? -1 : 1) * n.speed * dt;
+    for (let i = 0; i < notes.length; i++) {
+      notes[i].y += (reverse ? -1 : 1) * notes[i].speed * dt;
     }
 
     const hitY = H * 0.78;
+
     for (let i = notes.length - 1; i >= 0; i--) {
       if (notes[i].y > hitY + 40) {
         notes.splice(i, 1);
         combo = Math.max(0, combo - 3);
         score = Math.max(0, score - 120);
-      }
-      if (notes[i] && notes[i].y < -80) {
+      } else if (notes[i].y < -80) {
         notes.splice(i, 1);
       }
     }
 
-    const tempoBonus = Math.max(0, 1 - Math.abs(120 - bpm) / 40);
-    score += tempoBonus * 10 * dt * (1 + combo / 30);
+    const tempoBonus = Math.max(0, 1 - Math.abs(profile.bpmStart - bpm) / 40);
+    score += tempoBonus * profile.tempoBonusScale * dt * (1 + combo / 30);
 
     draw(ctx, W, H, bpm, reverse, notes, msg, msgT);
 
@@ -799,13 +927,14 @@ function runMiniGame() {
 function draw(ctx, W, H, bpm, reverse, notes, msg, msgT) {
   const theme = getCityTheme(currentCity);
 
-  ctx.clearRect(0, 0, W, H);
-
-  ctx.fillStyle = "rgba(0,0,0,0.45)";
+  ctx.fillStyle = "#070707";
   ctx.fillRect(0, 0, W, H);
 
-  ctx.strokeStyle = "rgba(255,255,255,0.05)";
-  for (let y = 0; y < H; y += 6) {
+  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.strokeStyle = "rgba(255,255,255,0.035)";
+  for (let y = 0; y < H; y += 10) {
     ctx.beginPath();
     ctx.moveTo(0, y);
     ctx.lineTo(W, y);
@@ -817,21 +946,23 @@ function draw(ctx, W, H, bpm, reverse, notes, msg, msgT) {
   ctx.fillRect(laneX - 70, 0, 140, H);
 
   const hitY = H * 0.78;
-  ctx.strokeStyle = theme.accent;
+  ctx.strokeStyle = theme.line;
+  ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(laneX - 90, hitY);
   ctx.lineTo(laneX + 90, hitY);
   ctx.stroke();
 
-  for (const n of notes) {
+  for (let i = 0; i < notes.length; i++) {
+    const n = notes[i];
     ctx.fillStyle = theme.note;
     ctx.fillRect(laneX - 36, n.y, 72, 16);
-    ctx.strokeStyle = "rgba(255,255,255,0.25)";
+    ctx.strokeStyle = "rgba(255,255,255,0.22)";
     ctx.strokeRect(laneX - 36, n.y, 72, 16);
   }
 
   ctx.font = "14px monospace";
-  ctx.fillStyle = "rgba(255,255,255,0.75)";
+  ctx.fillStyle = "rgba(255,255,255,0.74)";
   ctx.fillText(`BPM ${Math.round(bpm)}${reverse ? " (REV)" : ""}`, 12, 24);
 
   if (msgT > 0) {
