@@ -1,14 +1,9 @@
 <!DOCTYPE html>
 <html>
-
 <head>
-
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
 <title>NEON WORLD '99</title>
-
 <style>
-
 body{
 background:black;
 color:white;
@@ -42,24 +37,20 @@ color:#00ff9c;
 font-size:12px;
 color:#aaa;
 margin-top:6px;
+line-height:1.5;
 }
 
 button{
-
 width:100%;
 padding:14px;
 margin-top:10px;
-
 border:none;
 border-radius:10px;
-
 font-size:16px;
 font-weight:bold;
 font-family:monospace;
-
 background:#00d4ff;
 color:black;
-
 }
 
 button.secondary{
@@ -67,78 +58,84 @@ background:#222;
 color:#ccc;
 border:1px solid #444;
 }
-
 </style>
-
 </head>
-
 <body>
 
 <h1>NEON WORLD '99</h1>
 
 <div class="panel">
-
-<div>WEEKLY JACKPOT</div>
-
-<div class="jackpot" id="jackpot">
-loading...
-</div>
-
-<div class="leader" id="leader">
-loading leader...
-</div>
-
+  <div>WEEKLY JACKPOT</div>
+  <div class="jackpot" id="jackpot">loading...</div>
+  <div class="leader" id="leader">loading leader...</div>
 </div>
 
 <div class="panel">
-
-<button onclick="goFree()">
-START FREE MODE
-</button>
-
-<button onclick="location.href='ranked.html'">
-RANKED MODE (0.01 SOL)
-</button>
-
-<button class="secondary" onclick="goBoard()">
-LEADERBOARD
-</button>
-
+  <button onclick="goFreeMenu()">START FREE MODE</button>
+  <button onclick="goRankedMenu()">RANKED MODE (0.01 SOL)</button>
+  <button class="secondary" onclick="location.href='/board.html'">LEADERBOARD</button>
 </div>
+
+<script>
+function goFreeMenu() {
+  localStorage.setItem("neon99_mode", "free");
+  location.href = "/city.html";
+}
+
+function goRankedMenu() {
+  localStorage.setItem("neon99_mode", "ranked");
+  location.href = "/ranked.html";
+}
+
+function shortWallet(w) {
+  const s = String(w || "");
+  if (!s) return "—";
+  if (s.length <= 12) return s;
+  return s.slice(0, 4) + "..." + s.slice(-4);
+}
+
+async function loadWeeklyStats() {
+  try {
+    const r = await fetch("/api/weekly-winner");
+    const j = await r.json();
+
+    if (!r.ok || !j.ok) {
+      document.getElementById("jackpot").textContent = "unavailable";
+      document.getElementById("leader").textContent = "Could not load weekly stats";
+      return;
+    }
+
+    document.getElementById("jackpot").textContent =
+      `${Number(j.jackpot_sol || 0).toFixed(3)} SOL`;
+
+    const leaderWallet = j.leader_wallet ? shortWallet(j.leader_wallet) : "No leader yet";
+    const leaderScore = Number(j.leader_score || 0);
+    const leaderCity = j.leader_city || "—";
+
+    document.getElementById("leader").textContent =
+      `Leader: ${leaderWallet} | Score: ${leaderScore} | City: ${leaderCity}`;
+  } catch {
+    document.getElementById("jackpot").textContent = "unavailable";
+    document.getElementById("leader").textContent = "Could not load weekly stats";
+  }
+}
+
+loadWeeklyStats();
+setInterval(loadWeeklyStats, 10000);
+</script>
 
 <script src="game.js"></script>
 
 <script>
+// auto-start selected city
+const selectedCity = localStorage.getItem("neon99_city");
 
-async function loadJackpot(){
-
-try{
-
-const r=await fetch("/api/jackpot")
-
-const j=await r.json()
-
-if(!j.ok) return
-
-document.getElementById("jackpot").textContent =
-j.jackpot_sol.toFixed(3)+" SOL"
-
-document.getElementById("leader").textContent =
-"Leader: "+(j.leader_wallet?.slice(0,6) || "—")+
-" | Score: "+(j.leader_score || 0)
-
-}catch{}
-
+if (selectedCity) {
+  setTimeout(() => {
+    window.city(selectedCity);
+  }, 50);
 }
-
-// initial load
-loadJackpot()
-
-// auto refresh
-setInterval(loadJackpot,10000)
-
 </script>
 
 </body>
-
 </html>
