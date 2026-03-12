@@ -256,7 +256,7 @@
       const empty = document.getElementById("empty");
 
       try {
-        const r = await fetch("/api/global-leaderboard");
+        const r = await fetch("/api/global-leaderboard?scope=week");
         const j = await r.json();
 
         if (!r.ok || !j.ok || !Array.isArray(j.items)) {
