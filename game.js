@@ -330,6 +330,8 @@ async function ensureRankedAccess() {
 
 // ---------------- ANTI-CHEAT ----------------
 let currentRunToken = "";
+let currentRunSeed = "";
+let runStartedAt = 0;
 
 async function createRunToken(cityName) {
   const modeNow = getMode();
@@ -354,10 +356,14 @@ async function createRunToken(cityName) {
   } catch {}
 
   if (!res.ok || !data.ok || !data.run_token) {
-    throw new Error(data.error || "Failed to create run");
+    throw new Error(data.error || "Failed to start run");
   }
 
   currentRunToken = String(data.run_token);
+  currentRunSeed = String(data.run_seed || "");
+  runStartedAt = Number(data.created_at || Date.now());
+
+  return currentRunToken;
 }
 
 // ---------------- VIRAL SHARE ----------------
@@ -530,6 +536,9 @@ function runGame() {
   let time = GAME_SECONDS;
   let score = 0;
   let combo = 0;
+  let hitCount = 0;
+  let missCount = 0;
+  let maxCombo = 0;
   let bpm = diff.bpm;
 
   const notes = [];
@@ -563,9 +572,12 @@ function runGame() {
     if (i >= 0) {
       notes.splice(i, 1);
       combo++;
+      hitCount++;
+      if (combo > maxCombo) maxCombo = combo;
       score += 200 + combo * 10;
     } else {
       combo = 0;
+      missCount++;
       score = Math.max(0, score - 60);
     }
   }
@@ -620,6 +632,7 @@ function runGame() {
       if (notes[i].y > cv.height * 0.78 + 40) {
         notes.splice(i, 1);
         combo = 0;
+        missCount++;
         score = Math.max(0, score - 80);
       }
     }
@@ -658,7 +671,11 @@ function runGame() {
     document.getElementById("c").textContent = String(combo);
 
     if (time <= 0) {
-      endGame(score | 0);
+      endGame(score | 0, {
+        hitCount,
+        missCount,
+        maxCombo
+      });
       return;
     }
 
@@ -669,19 +686,21 @@ function runGame() {
 }
 
 // ---------------- GAME END ----------------
-function endGame(finalScore) {
+async function endGame(finalScore, stats = {}) {
   stopMusic();
 
   bestScore = Math.max(loadBest(), finalScore);
   saveBest(bestScore);
-
   saveCityScore(currentCity, finalScore);
+
+  let submitState = "NOT SENT";
 
   try {
     const modeNow = getMode();
     const wallet = (modeNow === "ranked" ? (getWallet() || "") : "") || "guest";
+    const durationMs = Math.max(0, Date.now() - Number(runStartedAt || Date.now()));
 
-    fetch("/api/submit-score", {
+    const res = await fetch("/api/submit-score", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -690,15 +709,33 @@ function endGame(finalScore) {
         score: Number(finalScore),
         city: currentCity,
         country: getCountry(),
-        mode: modeNow
+        mode: modeNow,
+        hit_count: Number(stats.hitCount || 0),
+        miss_count: Number(stats.missCount || 0),
+        max_combo: Number(stats.maxCombo || 0),
+        duration_ms: Number(durationMs || 0),
+        run_seed: currentRunSeed
       })
-    }).catch(() => {});
-  } catch {}
+    });
 
-  showEndScreen(finalScore);
+    let data = {};
+    try {
+      data = await res.json();
+    } catch {}
+
+    if (res.ok && data.ok) {
+      submitState = data.verified ? "VERIFIED" : "FLAGGED";
+    } else {
+      submitState = "FAILED";
+    }
+  } catch {
+    submitState = "FAILED";
+  }
+
+  showEndScreen(finalScore, submitState);
 }
 
-function showEndScreen(finalScore) {
+function showEndScreen(finalScore, submitState = "UNKNOWN") {
   const accent = getAccent(currentCity);
   const app = document.getElementById("app");
 
@@ -717,6 +754,7 @@ function showEndScreen(finalScore) {
       <div style="max-width:420px;margin:0 auto;border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:18px;background:rgba(255,255,255,.04);line-height:1.8">
         <div>CITY: <b>${escapeHtml(currentCity)}</b></div>
         <div>SCORE: <b>${finalScore}</b></div>
+        <div>RANKED STATUS: <b>${escapeHtml(submitState)}</b></div>
         <div>CITY BEST: <b>${getCityScore(currentCity)}</b></div>
         <div>GLOBAL BEST: <b>${bestScore}</b></div>
         <div style="margin-top:8px;font-size:12px;color:#aaa">${nextText}</div>
