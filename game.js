@@ -1,378 +1,596 @@
-// NEON WORLD '99 — FINAL ENGINE
+// NEON WORLD '99 — STABLE FINAL ENGINE
 
-const GAME_SECONDS = 60
+const GAME_SECONDS = 60;
+const SITE_URL = "https://neon-world-99.vercel.app";
 
 // progression order
 const CITY_ORDER = [
-"New York",
-"Tokyo",
-"Berlin",
-"Rio",
-"Seoul",
-"London",
-"Paris",
-"Dubai",
-"Singapore",
-"Istanbul"
-]
+  "New York",
+  "Tokyo",
+  "Berlin",
+  "Rio",
+  "Seoul",
+  "London",
+  "Paris",
+  "Dubai",
+  "Singapore",
+  "Istanbul"
+];
 
-// unlock requirements
+// unlock requirements:
+// each city unlocks by reaching this score in the PREVIOUS city
 const CITY_REQUIRE = {
-"New York":0,
-"Tokyo":500,
-"Berlin":700,
-"Rio":900,
-"Seoul":1100,
-"London":1300,
-"Paris":1500,
-"Dubai":1800,
-"Singapore":2100,
-"Istanbul":2500
-}
+  "New York": 0,
+  "Tokyo": 500,
+  "Berlin": 700,
+  "Rio": 900,
+  "Seoul": 1100,
+  "London": 1300,
+  "Paris": 1500,
+  "Dubai": 1800,
+  "Singapore": 2100,
+  "Istanbul": 2500
+};
 
-// difficulty
+// city difficulty
 const CITY_DIFF = {
+  "New York": { bpm: 110, note: 180, spawn: 1.00, accent: "#00d4ff" },
+  "Tokyo": { bpm: 118, note: 195, spawn: 1.05, accent: "#ff4fd8" },
+  "Berlin": { bpm: 122, note: 210, spawn: 1.10, accent: "#a8ff3e" },
+  "Rio": { bpm: 126, note: 225, spawn: 1.15, accent: "#ffd166" },
+  "Seoul": { bpm: 130, note: 240, spawn: 1.20, accent: "#7afcff" },
+  "London": { bpm: 134, note: 255, spawn: 1.25, accent: "#c8b6ff" },
+  "Paris": { bpm: 138, note: 270, spawn: 1.30, accent: "#ff99c8" },
+  "Dubai": { bpm: 142, note: 285, spawn: 1.35, accent: "#f8e16c" },
+  "Singapore": { bpm: 146, note: 300, spawn: 1.40, accent: "#8be9fd" },
+  "Istanbul": { bpm: 150, note: 320, spawn: 1.50, accent: "#ffb703" }
+};
 
-"New York":{bpm:110,note:180,spawn:1},
-"Tokyo":{bpm:118,note:195,spawn:1.05},
-"Berlin":{bpm:122,note:210,spawn:1.1},
-"Rio":{bpm:126,note:225,spawn:1.15},
-"Seoul":{bpm:130,note:240,spawn:1.2},
-"London":{bpm:134,note:255,spawn:1.25},
-"Paris":{bpm:138,note:270,spawn:1.3},
-"Dubai":{bpm:142,note:285,spawn:1.35},
-"Singapore":{bpm:146,note:300,spawn:1.4},
-"Istanbul":{bpm:150,note:320,spawn:1.5}
+// themes
+const CITY_BG = {
+  "New York": "/bg_ny.jpg",
+  "Tokyo": "/bg_tokyo.jpg",
+  "Berlin": "/bg_berlin.jpg",
+  "Rio": "/bg_rio.jpg",
+  "Seoul": "/bg_seoul.jpg",
+  "London": "/bg_london.jpg",
+  "Paris": "/bg_paris.jpg",
+  "Dubai": "/bg_dubai.jpg",
+  "Singapore": "/bg_singapore.jpg",
+  "Istanbul": "/bg_istanbul.jpg"
+};
 
+const CITY_BGM = {
+  "New York": "/bgm_ny.mp3",
+  "Tokyo": "/bgm_tokyo.mp3",
+  "Berlin": "/bgm_berlin.mp3",
+  "Rio": "/bgm_pulse.mp3",
+  "Seoul": "/bgm_pulse.mp3",
+  "London": "/bgm_midnight.mp3",
+  "Paris": "/bgm_midnight.mp3",
+  "Dubai": "/bgm_lux.mp3",
+  "Singapore": "/bgm_lux.mp3",
+  "Istanbul": "/bgm_lux.mp3"
+};
+
+// ---------------- STORAGE ----------------
+function loadBest() {
+  try {
+    const v = localStorage.getItem("neon99_best");
+    return v ? parseInt(v, 10) : 0;
+  } catch {
+    return 0;
+  }
 }
 
-// storage
-function loadBest(){
-try{
-const v=localStorage.getItem("neon99_best")
-return v?parseInt(v,10):0
-}catch{return 0}
+function saveBest(v) {
+  try {
+    localStorage.setItem("neon99_best", String(v));
+  } catch {}
 }
 
-function saveBest(v){
-localStorage.setItem("neon99_best",String(v))
+function loadCityScores() {
+  try {
+    const j = localStorage.getItem("neon99_city_scores");
+    return j ? JSON.parse(j) : {};
+  } catch {
+    return {};
+  }
 }
 
-function loadCityScores(){
-try{
-const j=localStorage.getItem("neon99_city_scores")
-return j?JSON.parse(j):{}
-}catch{return{}}
+function saveCityScore(city, score) {
+  try {
+    const data = loadCityScores();
+    if (!data[city] || score > data[city]) {
+      data[city] = score;
+    }
+    localStorage.setItem("neon99_city_scores", JSON.stringify(data));
+  } catch {}
 }
 
-function saveCityScore(city,score){
-
-const data=loadCityScores()
-
-if(!data[city]||score>data[city]){
-data[city]=score
+function getCityScore(city) {
+  const data = loadCityScores();
+  return Number(data[city] || 0);
 }
 
-localStorage.setItem(
-"neon99_city_scores",
-JSON.stringify(data)
-)
-
+function getMode() {
+  return localStorage.getItem("neon99_mode") || "free";
 }
 
-function getCityScore(city){
-const data=loadCityScores()
-return data[city]||0
+function getWallet() {
+  try {
+    return localStorage.getItem("neon99_wallet") || "";
+  } catch {
+    return "";
+  }
 }
 
-// unlock
-function cityUnlocked(city){
-
-if(city==="New York") return true
-
-const index=CITY_ORDER.indexOf(city)
-const prev=CITY_ORDER[index-1]
-
-const prevScore=getCityScore(prev)
-
-return prevScore>=CITY_REQUIRE[city]
-
+function getCountry() {
+  try {
+    return localStorage.getItem("neon99_country") || "TR";
+  } catch {
+    return "TR";
+  }
 }
 
-// mode
-function getMode(){
-return localStorage.getItem("neon99_mode")||"free"
+function getLocalPassUntil() {
+  try {
+    return parseInt(localStorage.getItem("neon99_pass_until") || "0", 10);
+  } catch {
+    return 0;
+  }
 }
 
-function getWallet(){
-return localStorage.getItem("neon99_wallet")||"guest"
+function setLocalPassUntil(v) {
+  try {
+    localStorage.setItem("neon99_pass_until", String(Number(v) || 0));
+  } catch {}
 }
 
-function getCountry(){
-return localStorage.getItem("neon99_country")||"TR"
+// ---------------- HELPERS ----------------
+function shortWallet(w) {
+  const s = String(w || "");
+  if (!s) return "N/A";
+  if (s.length <= 12) return s;
+  return s.slice(0, 4) + "..." + s.slice(-4);
 }
 
-// navigation
-window.goFree=function(){
-localStorage.setItem("neon99_mode","free")
-location.href="/city.html"
+function cityUnlocked(city) {
+  if (city === "New York") return true;
+
+  const index = CITY_ORDER.indexOf(city);
+  if (index <= 0) return false;
+
+  const prev = CITY_ORDER[index - 1];
+  const prevScore = getCityScore(prev);
+
+  return prevScore >= CITY_REQUIRE[city];
 }
 
-window.goRanked=function(){
-localStorage.setItem("neon99_mode","ranked")
-location.href="/city.html"
+function getAccent(city) {
+  return (CITY_DIFF[city] || CITY_DIFF["New York"]).accent;
 }
 
-window.goBoard=function(){
-location.href="/board.html"
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (m) => {
+    return {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    }[m];
+  });
 }
 
-// city select
-window.city=function(name){
-
-if(!cityUnlocked(name)){
-alert("CITY LOCKED\nPlay previous city first")
-return
+function applyBackground(city) {
+  const bg = CITY_BG[city] || CITY_BG["New York"];
+  document.body.style.backgroundColor = "#000";
+  document.body.style.backgroundImage = `url("${bg}")`;
+  document.body.style.backgroundSize = "cover";
+  document.body.style.backgroundPosition = "center";
+  document.body.style.backgroundRepeat = "no-repeat";
 }
 
-currentCity=name
-startGame()
+// ---------------- MUSIC ----------------
+let bgm = null;
+let bgmStarted = false;
 
+function stopMusic() {
+  try {
+    if (bgm) {
+      bgm.pause();
+      bgm.currentTime = 0;
+      bgm = null;
+    }
+  } catch {}
+  bgmStarted = false;
 }
 
-// globals
-let currentCity="New York"
-let bestScore=loadBest()
+function startMusicGesture(city) {
+  if (bgmStarted) return;
 
-// game start
-function startGame(){
+  try {
+    stopMusic();
+    const src = CITY_BGM[city] || CITY_BGM["New York"];
+    bgm = new Audio(src);
+    bgm.loop = true;
+    bgm.volume = 0.38;
 
-document.body.innerHTML=`
+    const p = bgm.play();
+    bgmStarted = true;
 
-<div style="text-align:center;color:white;font-family:monospace;padding:16px">
-
-<h1 style="color:#00d4ff">NEON WORLD '99</h1>
-
-<div>City: <b>${currentCity}</b></div>
-
-<div style="margin:10px">
-
-TIME <b id="t">60</b>
-
-&nbsp;
-
-SCORE <b id="s">0</b>
-
-&nbsp;
-
-COMBO <b id="c">0</b>
-
-&nbsp;
-
-BEST <b id="b">${bestScore}</b>
-
-</div>
-
-<canvas id="cv"
-width="390"
-height="600"
-style="width:100%;max-width:420px;border:1px solid #444">
-</canvas>
-
-</div>
-
-`
-
-runGame()
-
+    if (p && p.catch) {
+      p.catch(() => {
+        bgmStarted = false;
+      });
+    }
+  } catch {
+    bgmStarted = false;
+  }
 }
 
-// main game
-function runGame(){
+// ---------------- RANKED ACCESS ----------------
+async function fetchRankedPassFromServer() {
+  const wallet = getWallet();
 
-const cv=document.getElementById("cv")
-const ctx=cv.getContext("2d")
+  if (!wallet) {
+    return {
+      ok: false,
+      pass: false,
+      pass_until: 0
+    };
+  }
 
-const diff=CITY_DIFF[currentCity]
+  const res = await fetch(`/api/me?wallet=${encodeURIComponent(wallet)}`, {
+    method: "GET"
+  });
 
-let time=GAME_SECONDS
-let score=0
-let combo=0
+  let data = {};
+  try {
+    data = await res.json();
+  } catch {}
 
-const notes=[]
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to check ranked pass");
+  }
 
-let spawnTimer=0
+  const passUntil = Number(data.pass_until || 0);
+  setLocalPassUntil(passUntil);
 
-function spawn(){
-
-notes.push({
-
-y:-20,
-
-speed:diff.note
-
-})
-
+  return {
+    ok: !!data.ok,
+    pass: !!data.pass,
+    pass_until: passUntil
+  };
 }
 
-// input
-cv.onclick=hit
+async function ensureRankedAccess() {
+  if (getMode() !== "ranked") return true;
 
-function hit(){
+  const wallet = getWallet();
+  if (!wallet) return false;
 
-const hitY=cv.height*0.78
-
-const i=notes.findIndex(
-n=>Math.abs(n.y-hitY)<20
-)
-
-if(i>=0){
-
-notes.splice(i,1)
-
-combo++
-
-score+=200+(combo*10)
-
-}else{
-
-combo=0
-
-score=Math.max(0,score-60)
-
+  try {
+    const passInfo = await fetchRankedPassFromServer();
+    return !!(passInfo.ok && passInfo.pass && Date.now() < Number(passInfo.pass_until || 0));
+  } catch {
+    return Date.now() < getLocalPassUntil();
+  }
 }
 
+// ---------------- ANTI-CHEAT RUN TOKEN ----------------
+let currentRunToken = "";
+
+async function createRunToken(cityName) {
+  const modeNow = getMode();
+  const wallet = (modeNow === "ranked" ? (getWallet() || "") : "") || "guest";
+
+  const res = await fetch("/api/start-run", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      wallet,
+      mode: modeNow,
+      city: cityName,
+      country: getCountry()
+    })
+  });
+
+  let data = {};
+  try {
+    data = await res.json();
+  } catch {}
+
+  if (!res.ok || !data.ok || !data.run_token) {
+    throw new Error(data.error || "Failed to create run");
+  }
+
+  currentRunToken = String(data.run_token);
 }
 
-// loop
-let last=performance.now()
+// ---------------- GLOBALS ----------------
+let currentCity = localStorage.getItem("neon99_city") || "New York";
+let bestScore = loadBest();
 
-function loop(now){
+// ---------------- NAV ----------------
+window.goFree = function () {
+  localStorage.setItem("neon99_mode", "free");
+  location.href = "/city.html";
+};
 
-const dt=(now-last)/1000
+window.goRanked = function () {
+  localStorage.setItem("neon99_mode", "ranked");
+  location.href = "/city.html";
+};
 
-last=now
+window.goBoard = function () {
+  location.href = "/board.html";
+};
 
-time-=dt
+// ---------------- START CITY ----------------
+window.city = async function (name) {
+  if (!CITY_ORDER.includes(name)) {
+    alert("Unknown city");
+    return;
+  }
 
-spawnTimer+=dt*diff.spawn
+  if (!cityUnlocked(name)) {
+    const index = CITY_ORDER.indexOf(name);
+    const prev = CITY_ORDER[index - 1];
+    alert(
+      "CITY LOCKED\n" +
+      "Play " + prev + " first.\n" +
+      "Need " + CITY_REQUIRE[name] + " in " + prev + ".\n" +
+      "Current " + prev + " score: " + getCityScore(prev)
+    );
+    return;
+  }
 
-if(spawnTimer>0.6){
+  if (getMode() === "ranked") {
+    const hasAccess = await ensureRankedAccess();
+    if (!hasAccess) {
+      alert("RANKED locked.\nConnect + Pay 0.01 SOL first.");
+      return;
+    }
+  }
 
-spawnTimer=0
+  localStorage.setItem("neon99_city", name);
+  currentCity = name;
 
-spawn()
+  try {
+    await createRunToken(name);
+  } catch (e) {
+    alert("Could not start run:\n" + String(e.message || e));
+    return;
+  }
 
+  startGame();
+};
+
+// ---------------- GAME UI ----------------
+function startGame() {
+  applyBackground(currentCity);
+  stopMusic();
+
+  const accent = getAccent(currentCity);
+
+  document.body.innerHTML = `
+    <div style="text-align:center;color:white;font-family:monospace;padding:16px;min-height:100vh;box-sizing:border-box;background:rgba(0,0,0,.34)">
+      <h1 style="color:${accent};margin:10px 0;text-shadow:0 0 12px ${accent}">NEON WORLD '99</h1>
+
+      <div style="font-size:13px;margin-bottom:10px">
+        CITY: <b>${escapeHtml(currentCity)}</b>
+      </div>
+
+      <div style="margin:10px 0;font-size:13px;display:flex;justify-content:center;gap:14px;flex-wrap:wrap">
+        <div>TIME <b id="t">60</b></div>
+        <div>SCORE <b id="s">0</b></div>
+        <div>COMBO <b id="c">0</b></div>
+        <div>BEST <b id="b">${bestScore}</b></div>
+      </div>
+
+      <canvas id="cv"
+        width="390"
+        height="600"
+        style="width:100%;max-width:420px;border:1px solid rgba(255,255,255,.25);border-radius:12px;background:rgba(0,0,0,.45);touch-action:manipulation">
+      </canvas>
+
+      <div style="margin-top:10px;font-size:12px;color:rgba(255,255,255,.78)">
+        TAP = HIT · SWIPE = TEMPO
+      </div>
+
+      <div style="margin-top:12px">
+        <button id="backBtn" style="padding:10px 14px;border:none;border-radius:10px;background:${accent};color:#000;font-family:monospace;font-weight:bold">
+          BACK TO CITIES
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById("backBtn").onclick = () => {
+    stopMusic();
+    location.href = "/city.html";
+  };
+
+  runGame();
 }
 
-notes.forEach(n=>{
-n.y+=n.speed*dt
-})
+// ---------------- GAME LOOP ----------------
+function runGame() {
+  const cv = document.getElementById("cv");
+  const ctx = cv.getContext("2d");
+  const diff = CITY_DIFF[currentCity] || CITY_DIFF["New York"];
+  const accent = diff.accent;
 
-ctx.clearRect(0,0,cv.width,cv.height)
+  let time = GAME_SECONDS;
+  let score = 0;
+  let combo = 0;
+  let bpm = diff.bpm;
 
-const hitY=cv.height*0.78
+  const notes = [];
+  let spawnTimer = 0;
+  let last = performance.now();
 
-ctx.strokeStyle="#0ff"
+  function spawn() {
+    notes.push({
+      y: -20,
+      speed: diff.note
+    });
+  }
 
-ctx.beginPath()
+  function hit(e) {
+    if (e && e.cancelable) e.preventDefault();
 
-ctx.moveTo(0,hitY)
+    startMusicGesture(currentCity);
 
-ctx.lineTo(cv.width,hitY)
+    const hitY = cv.height * 0.78;
+    const i = notes.findIndex((n) => Math.abs(n.y - hitY) < 20);
 
-ctx.stroke()
+    if (i >= 0) {
+      notes.splice(i, 1);
+      combo++;
+      score += 200 + combo * 10;
+    } else {
+      combo = 0;
+      score = Math.max(0, score - 60);
+    }
+  }
 
-notes.forEach(n=>{
+  cv.addEventListener("pointerdown", hit, { passive: false });
 
-ctx.fillStyle="#ff2d6b"
+  let sx = null;
+  cv.addEventListener("touchstart", (e) => {
+    sx = e.touches[0].clientX;
+  }, { passive: true });
 
-ctx.fillRect(
-cv.width/2-35,
-n.y,
-70,
-14
-)
+  cv.addEventListener("touchmove", (e) => {
+    if (sx == null) return;
+    const x = e.touches[0].clientX;
+    const dx = x - sx;
 
-})
+    if (Math.abs(dx) > 30) {
+      bpm += dx > 0 ? 6 : -6;
+      bpm = Math.max(diff.bpm - 25, Math.min(diff.bpm + 25, bpm));
+      sx = x;
+    }
+  }, { passive: true });
 
-document.getElementById("t").textContent=Math.ceil(time)
-document.getElementById("s").textContent=score
-document.getElementById("c").textContent=combo
+  cv.addEventListener("touchend", () => {
+    sx = null;
+  }, { passive: true });
 
-if(time<=0){
+  function loop(now) {
+    const dt = Math.min(0.033, (now - last) / 1000);
+    last = now;
 
-end(score)
+    time -= dt;
+    spawnTimer += dt * diff.spawn * (bpm / diff.bpm);
 
-return
+    if (spawnTimer > 0.6) {
+      spawnTimer = 0;
+      spawn();
+    }
 
+    for (let i = 0; i < notes.length; i++) {
+      notes[i].y += notes[i].speed * dt;
+    }
+
+    for (let i = notes.length - 1; i >= 0; i--) {
+      if (notes[i].y > cv.height * 0.78 + 40) {
+        notes.splice(i, 1);
+        combo = 0;
+        score = Math.max(0, score - 80);
+      }
+    }
+
+    ctx.clearRect(0, 0, cv.width, cv.height);
+
+    const hitY = cv.height * 0.78;
+
+    ctx.fillStyle = "rgba(0,0,0,0.28)";
+    ctx.fillRect(0, 0, cv.width, cv.height);
+
+    ctx.strokeStyle = "rgba(255,255,255,0.06)";
+    for (let y = 0; y < cv.height; y += 10) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(cv.width, y);
+      ctx.stroke();
+    }
+
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, hitY);
+    ctx.lineTo(cv.width, hitY);
+    ctx.stroke();
+
+    for (let i = 0; i < notes.length; i++) {
+      ctx.fillStyle = "#ff2d6b";
+      ctx.fillRect(cv.width / 2 - 35, notes[i].y, 70, 14);
+      ctx.strokeStyle = "rgba(255,255,255,.2)";
+      ctx.strokeRect(cv.width / 2 - 35, notes[i].y, 70, 14);
+    }
+
+    document.getElementById("t").textContent = String(Math.ceil(time));
+    document.getElementById("s").textContent = String(score | 0);
+    document.getElementById("c").textContent = String(combo);
+
+    if (time <= 0) {
+      end(score | 0);
+      return;
+    }
+
+    requestAnimationFrame(loop);
+  }
+
+  requestAnimationFrame(loop);
 }
 
-requestAnimationFrame(loop)
+// ---------------- END GAME ----------------
+function end(finalScore) {
+  bestScore = Math.max(loadBest(), finalScore);
+  saveBest(bestScore);
 
-}
+  saveCityScore(currentCity, finalScore);
 
-requestAnimationFrame(loop)
+  try {
+    const modeNow = getMode();
+    const wallet = (modeNow === "ranked" ? (getWallet() || "") : "") || "guest";
 
-}
+    fetch("/api/submit-score", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        wallet,
+        run_token: currentRunToken,
+        score: Number(finalScore),
+        city: currentCity,
+        country: getCountry(),
+        mode: modeNow
+      })
+    }).catch(() => {});
+  } catch {}
 
-// game end
-function end(finalScore){
+  const index = CITY_ORDER.indexOf(currentCity);
+  const next = CITY_ORDER[index + 1];
 
-bestScore=Math.max(bestScore,finalScore)
+  let msg =
+    "SCORE: " + finalScore +
+    "\nCITY BEST: " + getCityScore(currentCity) +
+    "\nGLOBAL BEST: " + bestScore;
 
-saveBest(bestScore)
+  if (next) {
+    const unlocked = cityUnlocked(next);
+    msg +=
+      "\n\nNEXT CITY: " + next +
+      "\nNEED: " + CITY_REQUIRE[next] +
+      "\nSTATUS: " + (unlocked ? "UNLOCKED" : "LOCKED");
+  }
 
-// city score
-saveCityScore(currentCity,finalScore)
-
-// backend submit
-try{
-
-fetch("/api/submit-score",{
-
-method:"POST",
-
-headers:{
-"Content-Type":"application/json"
-},
-
-body:JSON.stringify({
-
-wallet:getWallet(),
-
-score:finalScore,
-
-city:currentCity,
-
-country:getCountry(),
-
-mode:getMode()
-
-})
-
-})
-
-}catch{}
-
-// next unlock info
-const index=CITY_ORDER.indexOf(currentCity)
-
-const next=CITY_ORDER[index+1]
-
-let msg="SCORE: "+finalScore+
-
-"\nCITY BEST: "+getCityScore(currentCity)
-
-if(next){
-
-msg+="\n\nNEXT CITY: "+next+
-"\nNEED: "+CITY_REQUIRE[next]
-
-}
-
-alert(msg)
-
-location.href="/city.html"
-
+  alert(msg);
+  location.href = "/city.html";
 }
