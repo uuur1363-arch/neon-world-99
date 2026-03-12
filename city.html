@@ -67,10 +67,27 @@
       box-shadow:0 0 0 1px rgba(255,255,255,.03) inset;
     }
 
+    .cityRow{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      margin-bottom:6px;
+      flex-wrap:wrap;
+    }
+
     .city{
       font-size:20px;
-      margin-bottom:6px;
       color:#fff;
+    }
+
+    .flag{
+      width:20px;
+      height:14px;
+      object-fit:cover;
+      border-radius:2px;
+      border:1px solid rgba(255,255,255,.22);
+      background:#111;
+      flex:0 0 auto;
     }
 
     .meta{
@@ -158,6 +175,19 @@
       "Istanbul": 2500
     };
 
+    const CITY_COUNTRY = {
+      "New York": "us",
+      "Tokyo": "jp",
+      "Berlin": "de",
+      "Rio": "br",
+      "Seoul": "kr",
+      "London": "gb",
+      "Paris": "fr",
+      "Dubai": "ae",
+      "Singapore": "sg",
+      "Istanbul": "tr"
+    };
+
     function loadBest() {
       const v = localStorage.getItem("neon99_best");
       return v ? parseInt(v, 10) : 0;
@@ -191,6 +221,15 @@
       return localStorage.getItem("neon99_mode") || "free";
     }
 
+    function flagUrl(country) {
+      if (!country) return "/flag_us.PNG";
+      return "/flag_" + String(country).toLowerCase() + ".PNG";
+    }
+
+    function flagImg(country, alt) {
+      return `<img class="flag" src="${flagUrl(country)}" alt="${alt || country || 'flag'}" onerror="this.style.display='none'">`;
+    }
+
     function playCity(name) {
       localStorage.setItem("neon99_city", name);
       location.href = "/game.html";
@@ -222,6 +261,7 @@
       CITY_ORDER.forEach((city) => {
         const unlocked = cityUnlocked(city);
         const score = getCityScore(city);
+        const country = CITY_COUNTRY[city];
 
         const card = document.createElement("div");
         card.className = "card";
@@ -230,7 +270,10 @@
         const prev = index > 0 ? CITY_ORDER[index - 1] : null;
 
         card.innerHTML = `
-          <div class="city">${city}</div>
+          <div class="cityRow">
+            ${flagImg(country, country)}
+            <div class="city">${city}</div>
+          </div>
 
           <div class="meta">
             CITY BEST: ${score}<br>
