@@ -1,198 +1,229 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NEON WORLD '99 — CITIES</title>
-<style>
-body{
-margin:0;
-padding:20px;
-background:black;
-color:white;
-font-family:monospace;
-}
-
-h1{
-text-align:center;
-color:#00d4ff;
-}
-
-.grid{
-display:grid;
-gap:14px;
-max-width:520px;
-margin:auto;
-}
-
-.card{
-border:1px solid rgba(255,255,255,.2);
-border-radius:12px;
-padding:16px;
-background:rgba(255,255,255,.05);
-}
-
-.city{
-font-size:20px;
-margin-bottom:6px;
-}
-
-.meta{
-font-size:12px;
-color:#aaa;
-margin-bottom:8px;
-line-height:1.45;
-}
-
-button{
-padding:10px;
-border:none;
-border-radius:8px;
-background:#00d4ff;
-color:black;
-font-family:monospace;
-font-weight:bold;
-width:100%;
-}
-
-button[disabled]{
-background:#333;
-color:#888;
-}
-
-.status{
-font-size:11px;
-margin-bottom:8px;
-}
-
-.top{
-text-align:center;
-margin-bottom:20px;
-font-size:12px;
-color:#aaa;
-}
-</style>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NEON WORLD '99 — CITIES</title>
+  <style>
+    body{
+      margin:0;
+      padding:20px 16px 32px;
+      background:#000;
+      color:#fff;
+      font-family:monospace;
+    }
+    h1{
+      text-align:center;
+      color:#00d4ff;
+      margin:8px 0 8px;
+    }
+    .top{
+      text-align:center;
+      margin-bottom:18px;
+      font-size:12px;
+      color:#aaa;
+      line-height:1.6;
+    }
+    .actions{
+      display:flex;
+      justify-content:center;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-bottom:18px;
+    }
+    .smallBtn{
+      padding:10px 14px;
+      border:none;
+      border-radius:10px;
+      background:#1a1a1a;
+      color:#ddd;
+      border:1px solid #444;
+      font-family:monospace;
+    }
+    .grid{
+      display:grid;
+      gap:14px;
+      max-width:560px;
+      margin:auto;
+    }
+    .card{
+      border:1px solid rgba(255,255,255,.18);
+      border-radius:14px;
+      padding:16px;
+      background:rgba(255,255,255,.05);
+    }
+    .city{
+      font-size:20px;
+      margin-bottom:6px;
+      color:#fff;
+    }
+    .meta{
+      font-size:12px;
+      color:#aaa;
+      margin-bottom:10px;
+      line-height:1.5;
+    }
+    .status{
+      font-size:11px;
+      margin-bottom:10px;
+      font-weight:bold;
+    }
+    .status.unlocked{
+      color:#00d4ff;
+    }
+    .status.locked{
+      color:#999;
+    }
+    button.play{
+      padding:11px;
+      border:none;
+      border-radius:10px;
+      background:#00d4ff;
+      color:#000;
+      font-family:monospace;
+      font-weight:bold;
+      width:100%;
+    }
+    button.play[disabled]{
+      background:#333;
+      color:#888;
+    }
+  </style>
 </head>
 <body>
 
-<h1>CHOOSE CITY</h1>
+  <h1>CHOOSE CITY</h1>
 
-<div class="top">
-MODE: <span id="mode"></span>
-&nbsp;&nbsp;
-BEST: <span id="best"></span>
-</div>
+  <div class="top">
+    MODE: <span id="mode"></span>
+    &nbsp;&nbsp;|&nbsp;&nbsp;
+    GLOBAL BEST: <span id="best"></span>
+  </div>
 
-<div class="grid" id="grid"></div>
+  <div class="actions">
+    <button class="smallBtn" onclick="goBack()">BACK</button>
+    <button class="smallBtn" onclick="location.href='/index.html'">HOME</button>
+    <button class="smallBtn" onclick="location.href='/board.html'">LEADERBOARD</button>
+  </div>
 
-<script>
-const CITY_ORDER = [
-  "New York",
-  "Tokyo",
-  "Berlin",
-  "Rio",
-  "Seoul",
-  "London",
-  "Paris",
-  "Dubai",
-  "Singapore",
-  "Istanbul"
-];
+  <div class="grid" id="grid"></div>
 
-const CITY_REQUIRE = {
-  "New York":0,
-  "Tokyo":500,
-  "Berlin":700,
-  "Rio":900,
-  "Seoul":1100,
-  "London":1300,
-  "Paris":1500,
-  "Dubai":1800,
-  "Singapore":2100,
-  "Istanbul":2500
-};
+  <script>
+    const CITY_ORDER = [
+      "New York",
+      "Tokyo",
+      "Berlin",
+      "Rio",
+      "Seoul",
+      "London",
+      "Paris",
+      "Dubai",
+      "Singapore",
+      "Istanbul"
+    ];
 
-function loadBest() {
-  const v = localStorage.getItem("neon99_best");
-  return v ? parseInt(v, 10) : 0;
-}
+    const CITY_REQUIRE = {
+      "New York": 0,
+      "Tokyo": 500,
+      "Berlin": 700,
+      "Rio": 900,
+      "Seoul": 1100,
+      "London": 1300,
+      "Paris": 1500,
+      "Dubai": 1800,
+      "Singapore": 2100,
+      "Istanbul": 2500
+    };
 
-function loadCityScores() {
-  try {
-    const j = localStorage.getItem("neon99_city_scores");
-    return j ? JSON.parse(j) : {};
-  } catch {
-    return {};
-  }
-}
+    function loadBest() {
+      const v = localStorage.getItem("neon99_best");
+      return v ? parseInt(v, 10) : 0;
+    }
 
-function getCityScore(city) {
-  const data = loadCityScores();
-  return data[city] || 0;
-}
+    function loadCityScores() {
+      try {
+        const j = localStorage.getItem("neon99_city_scores");
+        return j ? JSON.parse(j) : {};
+      } catch {
+        return {};
+      }
+    }
 
-function cityUnlocked(city) {
-  if (city === "New York") return true;
+    function getCityScore(city) {
+      const data = loadCityScores();
+      return Number(data[city] || 0);
+    }
 
-  const index = CITY_ORDER.indexOf(city);
-  const prev = CITY_ORDER[index - 1];
-  const prevScore = getCityScore(prev);
+    function cityUnlocked(city) {
+      if (city === "New York") return true;
 
-  return prevScore >= CITY_REQUIRE[city];
-}
+      const index = CITY_ORDER.indexOf(city);
+      const prev = CITY_ORDER[index - 1];
+      const prevScore = getCityScore(prev);
 
-function getMode() {
-  return localStorage.getItem("neon99_mode") || "free";
-}
+      return prevScore >= CITY_REQUIRE[city];
+    }
 
-function playCity(name) {
-  localStorage.setItem("neon99_city", name);
-  location.href = "/index.html";
-}
+    function getMode() {
+      return localStorage.getItem("neon99_mode") || "free";
+    }
 
-function render() {
-  document.getElementById("mode").textContent = getMode().toUpperCase();
-  document.getElementById("best").textContent = loadBest();
+    function playCity(name) {
+      localStorage.setItem("neon99_city", name);
+      location.href = "/game.html";
+    }
 
-  const grid = document.getElementById("grid");
-  grid.innerHTML = "";
+    function goBack() {
+      if (document.referrer) {
+        history.back();
+      } else {
+        location.href = "/index.html";
+      }
+    }
 
-  CITY_ORDER.forEach((city) => {
-    const unlocked = cityUnlocked(city);
-    const score = getCityScore(city);
+    function render() {
+      document.getElementById("mode").textContent = getMode().toUpperCase();
+      document.getElementById("best").textContent = loadBest();
 
-    const card = document.createElement("div");
-    card.className = "card";
+      const grid = document.getElementById("grid");
+      grid.innerHTML = "";
 
-    const index = CITY_ORDER.indexOf(city);
-    const prev = index > 0 ? CITY_ORDER[index - 1] : null;
+      CITY_ORDER.forEach((city) => {
+        const unlocked = cityUnlocked(city);
+        const score = getCityScore(city);
 
-    card.innerHTML = `
-      <div class="city">${city}</div>
+        const card = document.createElement("div");
+        card.className = "card";
 
-      <div class="meta">
-        CITY SCORE: ${score}<br>
-        ${city === "New York"
-          ? "START CITY"
-          : `UNLOCK: ${prev} → ${CITY_REQUIRE[city]}`}
-      </div>
+        const index = CITY_ORDER.indexOf(city);
+        const prev = index > 0 ? CITY_ORDER[index - 1] : null;
 
-      <div class="status">
-        ${unlocked ? "UNLOCKED" : "LOCKED"}
-      </div>
+        card.innerHTML = `
+          <div class="city">${city}</div>
 
-      <button ${unlocked ? "" : "disabled"} onclick="playCity('${city}')">
-        ${unlocked ? "PLAY" : "LOCKED"}
-      </button>
-    `;
+          <div class="meta">
+            CITY BEST: ${score}<br>
+            ${city === "New York"
+              ? "START CITY"
+              : `UNLOCK: ${prev} → ${CITY_REQUIRE[city]}`}
+          </div>
 
-    grid.appendChild(card);
-  });
-}
+          <div class="status ${unlocked ? "unlocked" : "locked"}">
+            ${unlocked ? "UNLOCKED" : "LOCKED"}
+          </div>
 
-render();
-window.addEventListener("pageshow", render);
-window.addEventListener("focus", render);
-</script>
+          <button class="play" ${unlocked ? "" : "disabled"} onclick="playCity('${city}')">
+            ${unlocked ? "PLAY" : "LOCKED"}
+          </button>
+        `;
+
+        grid.appendChild(card);
+      });
+    }
+
+    render();
+    window.addEventListener("pageshow", render);
+    window.addEventListener("focus", render);
+  </script>
 
 </body>
 </html>
