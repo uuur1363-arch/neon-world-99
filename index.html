@@ -1,31 +1,45 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>NEON WORLD '99</title>
   <style>
     body{
+      margin:0;
+      padding:28px 16px 40px;
       background:
         radial-gradient(circle at top, rgba(0,212,255,.10), transparent 35%),
         radial-gradient(circle at bottom, rgba(255,45,107,.08), transparent 35%),
         #000;
       color:#fff;
       font-family:monospace;
-      margin:0;
-      padding:28px 16px 40px;
       text-align:center;
+      -webkit-user-select:none;
+      user-select:none;
+      -webkit-touch-callout:none;
     }
+
+    .eyebrow{
+      color:#ff2d6b;
+      font-size:12px;
+      margin-bottom:8px;
+      letter-spacing:.8px;
+    }
+
     h1{
       color:#00d4ff;
-      margin:8px 0 10px;
+      margin:6px 0 10px;
       text-shadow:0 0 10px rgba(0,212,255,.25);
     }
+
     .sub{
-      color:rgba(255,255,255,.72);
+      color:rgba(255,255,255,.74);
       font-size:13px;
-      margin-bottom:18px;
-      line-height:1.5;
+      margin:0 auto 18px;
+      max-width:430px;
+      line-height:1.55;
     }
+
     .panel{
       margin:0 auto 14px;
       max-width:430px;
@@ -33,22 +47,27 @@
       border-radius:14px;
       padding:16px;
       background:rgba(255,255,255,.04);
+      box-shadow:0 0 0 1px rgba(255,255,255,.03) inset;
     }
-    .title{
+
+    .label{
       font-size:12px;
       color:#aaa;
       margin-bottom:6px;
     }
+
     .jackpot{
       font-size:24px;
       color:#00ff9c;
       margin-bottom:6px;
     }
+
     .leader{
       font-size:12px;
       color:#aaa;
-      line-height:1.5;
+      line-height:1.55;
     }
+
     button{
       width:100%;
       max-width:430px;
@@ -61,37 +80,54 @@
       font-family:monospace;
       background:#00d4ff;
       color:#000;
+      -webkit-tap-highlight-color:transparent;
     }
+
     button.secondary{
       background:#1a1a1a;
       color:#ddd;
       border:1px solid #444;
     }
+
+    .mini{
+      margin-top:18px;
+      color:rgba(255,255,255,.55);
+      font-size:12px;
+      line-height:1.5;
+    }
   </style>
 </head>
 <body>
 
-  <div class="title">RETRO RHYTHM ARCADE ON SOLANA</div>
+  <div class="eyebrow">RETRO RHYTHM ARCADE ON SOLANA</div>
   <h1>NEON WORLD '99</h1>
+
   <div class="sub">
-    Compete. Climb. Win the weekly jackpot.
+    Compete. Climb. Unlock cities. Win the weekly jackpot.
   </div>
 
   <div class="panel">
-    <div class="title">WEEKLY JACKPOT</div>
+    <div class="label">WEEKLY JACKPOT</div>
     <div class="jackpot" id="jackpot">loading...</div>
     <div class="leader" id="leader">loading leader...</div>
   </div>
 
   <div class="panel">
-    <div class="title">RANKED MODE</div>
-    <div style="font-size:18px;color:#fff;">0.01 SOL entry</div>
-    <div class="leader">Play ranked, climb leaderboard, chase the weekly prize.</div>
+    <div class="label">RANKED MODE</div>
+    <div style="font-size:18px;color:#fff;margin-bottom:6px;">0.01 SOL entry</div>
+    <div class="leader">
+      Beat the leader. Climb the board. Chase the weekly prize.
+    </div>
   </div>
 
   <button onclick="startFree()">START FREE MODE</button>
   <button onclick="startRanked()">RANKED MODE</button>
   <button class="secondary" onclick="location.href='/board.html'">LEADERBOARD</button>
+
+  <div class="mini">
+    Free mode unlocks cities.<br>
+    Ranked mode turns your runs into competition.
+  </div>
 
   <script>
     function shortWallet(w) {
@@ -101,18 +137,18 @@
       return s.slice(0, 4) + "..." + s.slice(-4);
     }
 
-    function clearPendingGameState() {
+    function clearPendingState() {
       localStorage.removeItem("neon99_city");
     }
 
     function startFree() {
-      clearPendingGameState();
+      clearPendingState();
       localStorage.setItem("neon99_mode", "free");
       location.href = "/city.html";
     }
 
     function startRanked() {
-      clearPendingGameState();
+      clearPendingState();
       localStorage.setItem("neon99_mode", "ranked");
       location.href = "/ranked.html";
     }
