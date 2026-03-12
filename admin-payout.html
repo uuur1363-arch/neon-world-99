@@ -144,6 +144,7 @@
   <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.js"></script>
   <script>
     const TREASURY = "8UH2aQubZ5kjR5PpesoPio4zkAfafoMY5hHuKrPYz6ct";
+    const PAYOUT_WEEK_KEY = "2026-W10";
 
     let currentWeekKey = "";
     let winnerWallet = "";
@@ -169,16 +170,20 @@
 
     async function loadPayoutStatus() {
       setStatus("Loading payout...");
-      debug("Loading /api/payout-status");
+      debug("Loading /api/payout-status for " + PAYOUT_WEEK_KEY);
 
       try {
-        const r = await fetch("/api/payout-status");
+        const r = await fetch(`/api/payout-status?week_key=${encodeURIComponent(PAYOUT_WEEK_KEY)}`);
         const j = await r.json();
 
         debug("payout-status response: " + JSON.stringify(j));
 
         if (!r.ok || !j.ok) {
           throw new Error(j.error || "Failed to load payout");
+        }
+
+        if (!j.exists) {
+          throw new Error("No payout job exists for this week");
         }
 
         currentWeekKey = String(j.week_key || "");
