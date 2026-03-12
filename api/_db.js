@@ -15,14 +15,44 @@ export function nowMs() {
   return Date.now();
 }
 
+export function isoWeekInfo(input = new Date()) {
+  const d = new Date(input);
+  const utc = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  const day = utc.getUTCDay() || 7;
+  utc.setUTCDate(utc.getUTCDate() + 4 - day);
+
+  const yearStart = new Date(Date.UTC(utc.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((utc - yearStart) / 86400000) + 1) / 7);
+  const year = utc.getUTCFullYear();
+
+  const weekStart = new Date(utc);
+  weekStart.setUTCDate(utc.getUTCDate() - 3);
+  weekStart.setUTCHours(0, 0, 0, 0);
+
+  const weekEnd = new Date(weekStart);
+  weekEnd.setUTCDate(weekStart.getUTCDate() + 7);
+
+  return {
+    year,
+    week: weekNo,
+    weekKey: `${year}-W${String(weekNo).padStart(2, "0")}`,
+    startMs: weekStart.getTime(),
+    endMs: weekEnd.getTime()
+  };
+}
+
 export function currentWeekKey() {
-  const d = new Date();
-  const year = d.getUTCFullYear();
+  return isoWeekInfo().weekKey;
+}
 
-  const oneJan = new Date(Date.UTC(year, 0, 1));
-  const dayMs = 24 * 60 * 60 * 1000;
-  const dayOfYear = Math.floor((d - oneJan) / dayMs) + 1;
-  const week = Math.ceil(dayOfYear / 7);
+export function currentWeekWindow() {
+  const { startMs, endMs, weekKey } = isoWeekInfo();
+  return { startMs, endMs, weekKey };
+}
 
-  return `${year}-W${String(week).padStart(2, "0")}`;
+export function shortWallet(wallet = "") {
+  const s = String(wallet || "");
+  if (!s) return "";
+  if (s.length <= 10) return s;
+  return `${s.slice(0, 4)}...${s.slice(-4)}`;
 }
