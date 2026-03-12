@@ -1,204 +1,144 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NEON WORLD '99</title>
-  <link rel="stylesheet" href="styles.css">
-  <style>
-    body{
-      margin:0;
-      min-height:100vh;
-      background:
-        radial-gradient(circle at top, rgba(0,212,255,.12), transparent 35%),
-        radial-gradient(circle at bottom, rgba(255,45,107,.10), transparent 35%),
-        #000;
-      color:#fff;
-      font-family:monospace;
-    }
-    .wrap{
-      max-width:460px;
-      margin:0 auto;
-      padding:48px 16px 56px;
-      text-align:center;
-    }
-    h1{
-      color:#00d4ff;
-      margin:12px 0 8px;
-      font-size:34px;
-      letter-spacing:1px;
-    }
-    .tag{
-      color:rgba(255,255,255,.72);
-      margin-bottom:18px;
-      font-size:13px;
-      line-height:1.5;
-    }
-    .box{
-      margin:0 auto 14px;
-      max-width:400px;
-      padding:14px;
-      border:1px solid rgba(255,255,255,.14);
-      border-radius:14px;
-      background:rgba(255,255,255,.04);
-    }
-    .boxTitle{
-      font-size:12px;
-      margin-bottom:6px;
-      font-weight:bold;
-      letter-spacing:.5px;
-    }
-    .cyan{ color:#00d4ff; }
-    .pink{ color:#ff2d6b; }
-    .green{ color:#a8ff3e; }
-    .big{
-      font-size:20px;
-      color:#fff;
-      margin-bottom:4px;
-    }
-    .small{
-      color:rgba(255,255,255,.7);
-      font-size:12px;
-    }
-    .cta{
-      width:100%;
-      max-width:400px;
-      padding:16px;
-      border:none;
-      border-radius:14px;
-      background:#00d4ff;
-      color:#000;
-      font-family:monospace;
-      font-weight:bold;
-      font-size:16px;
-      margin-top:8px;
-    }
-    .btn{
-      width:100%;
-      max-width:400px;
-      padding:14px;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,.18);
-      background:rgba(255,255,255,.05);
-      color:#fff;
-      font-family:monospace;
-      margin-top:10px;
-    }
-    .mini{
-      margin-top:16px;
-      color:rgba(255,255,255,.6);
-      font-size:12px;
-      line-height:1.5;
-    }
-  </style>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>NEON WORLD '99</title>
+
+<style>
+
+body{
+background:black;
+color:white;
+font-family:monospace;
+margin:0;
+padding:30px;
+text-align:center;
+}
+
+h1{
+color:#00d4ff;
+margin-bottom:10px;
+}
+
+.panel{
+margin:auto;
+max-width:420px;
+border:1px solid rgba(255,255,255,.2);
+border-radius:14px;
+padding:18px;
+margin-bottom:18px;
+background:rgba(255,255,255,.05);
+}
+
+.jackpot{
+font-size:22px;
+color:#00ff9c;
+}
+
+.leader{
+font-size:12px;
+color:#aaa;
+margin-top:6px;
+}
+
+button{
+
+width:100%;
+padding:14px;
+margin-top:10px;
+
+border:none;
+border-radius:10px;
+
+font-size:16px;
+font-weight:bold;
+font-family:monospace;
+
+background:#00d4ff;
+color:black;
+
+}
+
+button.secondary{
+background:#222;
+color:#ccc;
+border:1px solid #444;
+}
+
+</style>
+
 </head>
+
 <body>
-  <div class="wrap">
-    <div style="color:#ff2d6b; font-size:12px;">RETRO RHYTHM ARCADE ON SOLANA</div>
-    <h1>NEON WORLD '99</h1>
-    <div class="tag">
-      Compete. Climb. Win the weekly jackpot.
-    </div>
 
-    <div class="box">
-      <div class="boxTitle cyan">WEEKLY JACKPOT</div>
-      <div class="big" id="jackpotAmount">Loading...</div>
-      <div class="small" id="jackpotEntries"></div>
-    </div>
+<h1>NEON WORLD '99</h1>
 
-    <div class="box">
-      <div class="boxTitle pink">CURRENT LEADER</div>
-      <div class="big" id="leaderWallet">Loading...</div>
-      <div class="small" id="leaderScore"></div>
-    </div>
+<div class="panel">
 
-    <div class="box">
-      <div class="boxTitle green">WEEKLY WINNER</div>
-      <div class="big" id="winnerWallet">Loading...</div>
-      <div class="small" id="winnerScore"></div>
-    </div>
+<div>WEEKLY JACKPOT</div>
 
-    <div class="box">
-      <div class="boxTitle cyan">RANKED MODE</div>
-      <div class="big">0.01 SOL</div>
-      <div class="small">Unlock ranked access for 24 hours</div>
-    </div>
+<div class="jackpot" id="jackpot">
+loading...
+</div>
 
-    <button class="cta" onclick="goRankedEntry()">PLAY RANKED NOW</button>
-    <button class="btn" onclick="goFree()">START FREE MODE</button>
-    <button class="btn" onclick="goBoard()">GLOBAL LEADERBOARD</button>
+<div class="leader" id="leader">
+loading leader...
+</div>
 
-    <div class="mini">
-      Built for the Solana community.<br>
-      Retro visuals • ranked runs • weekly prize loop
-    </div>
-  </div>
+</div>
 
-  <script>
-    function goRankedEntry() {
-      localStorage.setItem("neon99_mode", "ranked");
-      location.href = "ranked.html";
-    }
+<div class="panel">
 
-    function shortWallet(w) {
-      const s = String(w || "");
-      if (!s) return "N/A";
-      if (s.length <= 12) return s;
-      return s.slice(0, 4) + "..." + s.slice(-4);
-    }
+<button onclick="goFree()">
+START FREE MODE
+</button>
 
-    async function loadHomeStats() {
-      const amountEl = document.getElementById("jackpotAmount");
-      const entriesEl = document.getElementById("jackpotEntries");
-      const leaderWalletEl = document.getElementById("leaderWallet");
-      const leaderScoreEl = document.getElementById("leaderScore");
-      const winnerWalletEl = document.getElementById("winnerWallet");
-      const winnerScoreEl = document.getElementById("winnerScore");
+<button onclick="location.href='ranked.html'">
+RANKED MODE (0.01 SOL)
+</button>
 
-      try {
-        const r = await fetch("/api/weekly-winner");
-        const j = await r.json();
+<button class="secondary" onclick="goBoard()">
+LEADERBOARD
+</button>
 
-        if (!r.ok || !j.ok) {
-          amountEl.textContent = "Unavailable";
-          entriesEl.textContent = "";
-          leaderWalletEl.textContent = "Unavailable";
-          leaderScoreEl.textContent = "";
-          winnerWalletEl.textContent = "Unavailable";
-          winnerScoreEl.textContent = "";
-          return;
-        }
+</div>
 
-        amountEl.textContent = `${Number(j.jackpot_sol || 0).toFixed(3)} SOL`;
-        entriesEl.textContent = `${Number(j.entry_count || 0)} ranked entries • ${String(j.week_key || "")}`;
+<script src="game.js"></script>
 
-        if (j.leader_wallet) {
-          leaderWalletEl.textContent = shortWallet(j.leader_wallet);
-          leaderScoreEl.textContent = `TOP SCORE: ${Number(j.leader_score || 0)} • ${j.leader_city || "Unknown"}`;
-        } else {
-          leaderWalletEl.textContent = "No scores yet";
-          leaderScoreEl.textContent = "Be the first leader";
-        }
+<script>
 
-        if (j.winner_wallet) {
-          winnerWalletEl.textContent = shortWallet(j.winner_wallet);
-          winnerScoreEl.textContent = `WINNING SCORE: ${Number(j.winner_score || 0)}`;
-        } else {
-          winnerWalletEl.textContent = "Week still open";
-          winnerScoreEl.textContent = "Winner will appear after close";
-        }
-      } catch (_) {
-        amountEl.textContent = "Unavailable";
-        entriesEl.textContent = "";
-        leaderWalletEl.textContent = "Unavailable";
-        leaderScoreEl.textContent = "";
-        winnerWalletEl.textContent = "Unavailable";
-        winnerScoreEl.textContent = "";
-      }
-    }
+async function loadJackpot(){
 
-    loadHomeStats();
-  </script>
+try{
 
-  <script src="game.js"></script>
+const r=await fetch("/api/jackpot")
+
+const j=await r.json()
+
+if(!j.ok) return
+
+document.getElementById("jackpot").textContent =
+j.jackpot_sol.toFixed(3)+" SOL"
+
+document.getElementById("leader").textContent =
+"Leader: "+(j.leader_wallet?.slice(0,6) || "—")+
+" | Score: "+(j.leader_score || 0)
+
+}catch{}
+
+}
+
+// initial load
+loadJackpot()
+
+// auto refresh
+setInterval(loadJackpot,10000)
+
+</script>
+
 </body>
+
 </html>
