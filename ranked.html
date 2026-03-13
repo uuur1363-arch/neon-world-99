@@ -103,7 +103,7 @@
     }
 
     #log{
-      min-height:160px;
+      min-height:180px;
       white-space:pre-wrap;
     }
   </style>
@@ -327,21 +327,52 @@
         await connection.confirmTransaction(signature, "confirmed");
 
         logLine("Verifying payment on backend...");
-        const verifyResp = await fetch("/api/verify-payment", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            wallet,
-            signature,
-            memo
-          })
-        });
 
-        const verifyJson = await verifyResp.json().catch(() => ({}));
+        let verifyJson = {};
+        let verified = false;
 
-        if (!verifyResp.ok || !verifyJson.ok) {
+        try {
+          const verifyResp = await fetch("/api/verify-payment", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              wallet,
+              signature,
+              memo
+            })
+          });
+
+          verifyJson = await verifyResp.json().catch(() => ({}));
+          verified = !!(verifyResp.ok && verifyJson.ok);
+        } catch (e) {
+          logLine("Verify request failed: " + String(e.message || e));
+        }
+
+        if (!verified) {
+          logLine("Verify failed, trying recovery...");
+
+          try {
+            const recoverResp = await fetch("/api/recover-payment", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                wallet,
+                signature
+              })
+            });
+
+            verifyJson = await recoverResp.json().catch(() => ({}));
+            verified = !!(recoverResp.ok && verifyJson.ok);
+          } catch (e) {
+            logLine("Recovery request failed: " + String(e.message || e));
+          }
+        }
+
+        if (!verified) {
           throw new Error(verifyJson.error || "Payment verification failed");
         }
 
