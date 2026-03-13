@@ -206,6 +206,20 @@ function setLocalPassUntil(v) {
   } catch {}
 }
 
+function getActiveChallengeId() {
+  try {
+    return String(localStorage.getItem("neon99_active_challenge") || "").trim();
+  } catch {
+    return "";
+  }
+}
+
+function clearActiveChallenge() {
+  try {
+    localStorage.removeItem("neon99_active_challenge");
+  } catch {}
+}
+
 // ---------------- HELPERS ----------------
 function cityUnlocked(city) {
   if (city === "New York") return true;
@@ -409,7 +423,7 @@ async function createRunToken(cityName) {
     throw new Error(data.error || "Failed to start run");
   }
 
-  currentRunToken = String(data.run_token);
+  currentRunToken = String(data.run_token || "");
   currentRunSeed = String(data.run_seed || "");
   runStartedAt = Number(data.created_at || Date.now());
 
@@ -513,6 +527,10 @@ async function createChallenge(finalScore) {
     throw new Error("Wallet required for challenge creation");
   }
 
+  if (!currentRunToken) {
+    throw new Error("run_token missing");
+  }
+
   const geo = await detectGeoInfo();
 
   const res = await fetch("/api/challenge?action=create", {
@@ -525,7 +543,8 @@ async function createChallenge(finalScore) {
       city: currentCity,
       country: geo.country,
       score: Number(finalScore),
-      bounty_sol: 0
+      bounty_sol: 0,
+      run_token: currentRunToken
     })
   });
 
@@ -858,12 +877,15 @@ async function endGame(finalScore, stats = {}) {
   lastCreatedChallengeUrl = "";
 
   let submitState = "NOT SENT";
+  let challengeClaimed = false;
+  let challengeClaimData = null;
 
   try {
     const modeNow = getMode();
     const wallet = (modeNow === "ranked" ? (getWallet() || "") : "") || "guest";
     const durationMs = Math.max(0, Date.now() - Number(runStartedAt || Date.now()));
     const geo = await detectGeoInfo();
+    const activeChallengeId = getActiveChallengeId();
 
     const res = await fetch("/api/submit-score", {
       method: "POST",
@@ -871,6 +893,7 @@ async function endGame(finalScore, stats = {}) {
       body: JSON.stringify({
         wallet,
         run_token: currentRunToken,
+        challenge_id: activeChallengeId,
         score: Number(finalScore),
         city: currentCity,
         country: geo.country,
@@ -890,6 +913,12 @@ async function endGame(finalScore, stats = {}) {
 
     if (res.ok && data.ok) {
       submitState = data.verified ? "VERIFIED" : "FLAGGED";
+      challengeClaimed = !!data.challenge_claimed;
+      challengeClaimData = data.challenge || null;
+
+      if (challengeClaimed) {
+        clearActiveChallenge();
+      }
     } else {
       submitState = "FAILED";
     }
@@ -897,10 +926,13 @@ async function endGame(finalScore, stats = {}) {
     submitState = "FAILED";
   }
 
-  showEndScreen(finalScore, submitState);
+  showEndScreen(finalScore, submitState, {
+    challengeClaimed,
+    challengeClaimData
+  });
 }
 
-function showEndScreen(finalScore, submitState = "UNKNOWN") {
+function showEndScreen(finalScore, submitState = "UNKNOWN", extra = {}) {
   const accent = getAccent(currentCity);
   const app = document.getElementById("app");
 
@@ -920,6 +952,9 @@ function showEndScreen(finalScore, submitState = "UNKNOWN") {
     submitState === "FLAGGED" && getMode() === "free"
       ? "MODE: PRACTICE"
       : `RANKED STATUS: ${escapeHtml(submitState)}`;
+
+  const challengeClaimed = !!extra.challengeClaimed;
+  const challengeClaimData = extra.challengeClaimData || null;
 
   app.innerHTML = `
     <div style="text-align:center;color:white;font-family:monospace;padding:24px 16px;min-height:100vh;box-sizing:border-box;background:rgba(0,0,0,.42)">
@@ -964,6 +999,12 @@ function showEndScreen(finalScore, submitState = "UNKNOWN") {
   `;
 
   const challengeInfo = document.getElementById("challengeInfo");
+
+  if (challengeClaimed && challengeClaimData) {
+    challengeInfo.innerHTML =
+      `Challenge beaten.<br>` +
+      `New winning score: <span style="color:#00d4ff">${Number(challengeClaimData.winning_score || 0)}</span>`;
+  }
 
   document.getElementById("shareBtn").onclick = async () => {
     await shareScore(finalScore);
