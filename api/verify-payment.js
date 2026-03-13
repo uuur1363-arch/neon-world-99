@@ -6,21 +6,19 @@ import { rateLimit, getIp } from "./_security.js";
 
 export default async function handler(req, res) {
   try {
-
     if (req.method !== "POST") {
       return res.status(405).json({
-        ok:false,
-        error:"POST only"
+        ok: false,
+        error: "POST only"
       });
     }
 
     const ip = getIp(req);
-    const gate = rateLimit(`verify-payment:${ip}`,20,60000);
-
+    const gate = rateLimit(`verify-payment:${ip}`, 20, 60 * 1000);
     if (!gate.ok) {
       return res.status(429).json({
-        ok:false,
-        error:"Too many requests"
+        ok: false,
+        error: "Too many requests"
       });
     }
 
@@ -28,8 +26,8 @@ export default async function handler(req, res) {
 
     if (!wallet || !signature) {
       return res.status(400).json({
-        ok:false,
-        error:"Missing wallet/signature"
+        ok: false,
+        error: "Missing wallet/signature"
       });
     }
 
@@ -40,39 +38,37 @@ export default async function handler(req, res) {
 
     if (!rpc || !treasury) {
       return res.status(500).json({
-        ok:false,
-        error:"Server not configured"
+        ok: false,
+        error: "Server not configured"
       });
     }
 
-    const connection = new Connection(rpc,"confirmed");
+    const connection = new Connection(rpc, "confirmed");
 
-    const tx = await connection.getParsedTransaction(signature,{
-      maxSupportedTransactionVersion:0,
-      commitment:"confirmed"
+    const tx = await connection.getParsedTransaction(signature, {
+      maxSupportedTransactionVersion: 0,
+      commitment: "confirmed"
     });
 
     if (!tx) {
       return res.status(400).json({
-        ok:false,
-        error:"Transaction not found"
+        ok: false,
+        error: "Transaction not found"
       });
     }
 
     if (tx.meta?.err) {
       return res.status(400).json({
-        ok:false,
-        error:"Transaction failed"
+        ok: false,
+        error: "Transaction failed"
       });
     }
 
-    const feePayer =
-      tx.transaction.message.accountKeys[0].pubkey.toString();
-
+    const feePayer = tx.transaction.message.accountKeys[0].pubkey.toString();
     if (feePayer !== wallet) {
       return res.status(400).json({
-        ok:false,
-        error:"Wallet mismatch"
+        ok: false,
+        error: "Wallet mismatch"
       });
     }
 
@@ -81,140 +77,195 @@ export default async function handler(req, res) {
 
     let transferOk = false;
 
-    for (const ix of tx.transaction.message.instructions) {
-
-      if (
-        ix.program === "system" &&
-        ix.parsed?.type === "transfer"
-      ) {
-
-        const info = ix.parsed.info;
-
+    for (const ix of tx.transaction.message.instructions || []) {
+      if (ix.program === "system" && ix.parsed?.type === "transfer") {
+        const info = ix.parsed.info || {};
         if (
-          info.source === wallet &&
-          info.destination === treasuryPk.toString() &&
-          Number(info.lamports) >= needLamports
+          String(info.source || "") === wallet &&
+          String(info.destination || "") === treasuryPk.toString() &&
+          Number(info.lamports || 0) >= needLamports
         ) {
           transferOk = true;
         }
-
       }
-
     }
 
     if (!transferOk) {
       return res.status(400).json({
-        ok:false,
-        error:"Payment not detected"
+        ok: false,
+        error: "Payment not detected"
       });
     }
 
     const db = supa();
     const now = nowMs();
 
-    const { data:existingSig } = await db
+    const { data: existingSig, error: sigReadError } = await db
       .from("used_signatures")
       .select("sig")
-      .eq("sig",signature)
+      .eq("sig", signature)
       .maybeSingle();
 
-    if (existingSig) {
-      return res.status(400).json({
-        ok:false,
-        error:"Signature already used"
+    if (sigReadError) {
+      return res.status(500).json({
+        ok: false,
+        error: sigReadError.message || "Failed to read signatures"
       });
     }
 
-    await db
+    if (existingSig) {
+      const { data: user } = await db
+        .from("users")
+        .select("pass_until")
+        .eq("wallet", wallet)
+        .maybeSingle();
+
+      return res.status(200).json({
+        ok: true,
+        pass_until: Number(user?.pass_until || 0),
+        already_verified: true
+      });
+    }
+
+    const { error: sigInsertError } = await db
       .from("used_signatures")
       .insert({
-        sig:signature,
+        sig: signature,
         wallet,
-        used_at:now
+        used_at: now
       });
 
-    const { data:user } = await db
+    if (sigInsertError) {
+      const msg = String(sigInsertError.message || "").toLowerCase();
+      if (msg.includes("duplicate") || msg.includes("unique") || msg.includes("already")) {
+        const { data: user } = await db
+          .from("users")
+          .select("pass_until")
+          .eq("wallet", wallet)
+          .maybeSingle();
+
+        return res.status(200).json({
+          ok: true,
+          pass_until: Number(user?.pass_until || 0),
+          already_verified: true
+        });
+      }
+
+      return res.status(500).json({
+        ok: false,
+        error: sigInsertError.message || "Failed to store signature"
+      });
+    }
+
+    const { data: user, error: userReadError } = await db
       .from("users")
-      .select("*")
-      .eq("wallet",wallet)
+      .select("wallet, pass_until, best_score, created_at")
+      .eq("wallet", wallet)
       .maybeSingle();
 
-    const passUntil =
-      now + PASS_HOURS * 60 * 60 * 1000;
+    if (userReadError) {
+      return res.status(500).json({
+        ok: false,
+        error: userReadError.message || "Failed to read user"
+      });
+    }
+
+    const currentPassUntil = Number(user?.pass_until || 0);
+    const baseTime = currentPassUntil > now ? currentPassUntil : now;
+    const passUntil = baseTime + PASS_HOURS * 60 * 60 * 1000;
 
     if (user) {
-
-      await db
+      const { error: updateError } = await db
         .from("users")
         .update({
-          pass_until:passUntil
+          pass_until: passUntil
         })
-        .eq("wallet",wallet);
+        .eq("wallet", wallet);
 
+      if (updateError) {
+        return res.status(500).json({
+          ok: false,
+          error: updateError.message || "Failed to update user"
+        });
+      }
     } else {
-
-      await db
+      const { error: insertError } = await db
         .from("users")
         .insert({
           wallet,
-          pass_until:passUntil,
-          best_score:0,
-          created_at:now
+          pass_until: passUntil,
+          best_score: 0,
+          created_at: now
         });
 
+      if (insertError) {
+        return res.status(500).json({
+          ok: false,
+          error: insertError.message || "Failed to create user"
+        });
+      }
     }
 
     const weekKey = currentWeekKey();
+    const jackpotAdd = Math.round(ENTRY_SOL * 1e9 * 0.30);
 
-    const { data:jackpot } = await db
+    const { data: jackpot, error: jackpotReadError } = await db
       .from("weekly_jackpots")
       .select("*")
-      .eq("week_key",weekKey)
+      .eq("week_key", weekKey)
       .maybeSingle();
 
-    const jackpotAdd =
-      Math.round(ENTRY_SOL * 1e9 * 0.30);
+    if (jackpotReadError) {
+      return res.status(500).json({
+        ok: false,
+        error: jackpotReadError.message || "Failed to read jackpot"
+      });
+    }
 
     if (jackpot) {
-
-      await db
+      const { error: jackpotUpdateError } = await db
         .from("weekly_jackpots")
         .update({
-          total_lamports:
-            Number(jackpot.total_lamports || 0) + jackpotAdd,
-          entry_count:
-            Number(jackpot.entry_count || 0) + 1,
-          updated_at:new Date().toISOString()
+          total_lamports: Number(jackpot.total_lamports || 0) + jackpotAdd,
+          entry_count: Number(jackpot.entry_count || 0) + 1,
+          updated_at: new Date().toISOString()
         })
-        .eq("week_key",weekKey);
+        .eq("week_key", weekKey);
 
+      if (jackpotUpdateError) {
+        return res.status(500).json({
+          ok: false,
+          error: jackpotUpdateError.message || "Failed to update jackpot"
+        });
+      }
     } else {
-
-      await db
+      const { error: jackpotInsertError } = await db
         .from("weekly_jackpots")
         .insert({
-          week_key:weekKey,
-          total_lamports:jackpotAdd,
-          entry_count:1,
-          status:"open",
-          updated_at:new Date().toISOString()
+          week_key: weekKey,
+          total_lamports: jackpotAdd,
+          entry_count: 1,
+          status: "open",
+          updated_at: new Date().toISOString()
         });
 
+      if (jackpotInsertError) {
+        return res.status(500).json({
+          ok: false,
+          error: jackpotInsertError.message || "Failed to create jackpot"
+        });
+      }
     }
 
     return res.status(200).json({
-      ok:true,
-      pass_until:passUntil
+      ok: true,
+      pass_until: passUntil
     });
-
   } catch (e) {
-
-    console.error("verify-payment fatal",e);
-
+    console.error("verify-payment fatal", e);
     return res.status(500).json({
-      ok:false,
-      error:String(e?.message || e)
+      ok: false,
+      error: String(e?.message || e)
     });
-
   }
 }
