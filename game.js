@@ -169,10 +169,30 @@ function getWallet() {
 
 function getCountry() {
   try {
-    return localStorage.getItem("neon99_country") || "TR";
+    return localStorage.getItem("neon99_country") || "unknown";
   } catch {
-    return "TR";
+    return "unknown";
   }
+}
+
+function setCountry(country) {
+  try {
+    localStorage.setItem("neon99_country", String(country || "unknown"));
+  } catch {}
+}
+
+function getCityRegion() {
+  try {
+    return localStorage.getItem("neon99_geo_city") || "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
+function setCityRegion(city) {
+  try {
+    localStorage.setItem("neon99_geo_city", String(city || "unknown"));
+  } catch {}
 }
 
 function getLocalPassUntil() {
@@ -241,6 +261,41 @@ function applyBackground(city) {
   document.body.style.backgroundPosition = "center";
   document.body.style.backgroundRepeat = "no-repeat";
   document.body.style.overscrollBehavior = "none";
+}
+
+async function detectGeoInfo() {
+  const existingCountry = String(getCountry() || "").trim();
+  const existingCity = String(getCityRegion() || "").trim();
+
+  if (existingCountry && existingCountry !== "unknown" && existingCity && existingCity !== "unknown") {
+    return {
+      country: existingCountry,
+      city: existingCity
+    };
+  }
+
+  try {
+    const r = await fetch("https://ipapi.co/json/", {
+      method: "GET"
+    });
+
+    const j = await r.json();
+
+    const country =
+      String(j.country_code || j.country || j.country_name || "unknown").trim() || "unknown";
+    const city =
+      String(j.city || "unknown").trim() || "unknown";
+
+    setCountry(country);
+    setCityRegion(city);
+
+    return { country, city };
+  } catch {
+    return {
+      country: existingCountry || "unknown",
+      city: existingCity || "unknown"
+    };
+  }
 }
 
 // ---------------- MUSIC ----------------
@@ -333,9 +388,14 @@ let currentRunToken = "";
 let currentRunSeed = "";
 let runStartedAt = 0;
 
+// ---------------- GLOBALS ----------------
+let currentCity = localStorage.getItem("neon99_city") || "";
+let bestScore = loadBest();
+
 async function createRunToken(cityName) {
   const modeNow = getMode();
   const wallet = (modeNow === "ranked" ? (getWallet() || "") : "") || "guest";
+  const geo = await detectGeoInfo();
 
   const res = await fetch("/api/start-run", {
     method: "POST",
@@ -346,7 +406,7 @@ async function createRunToken(cityName) {
       wallet,
       mode: modeNow,
       city: cityName,
-      country: getCountry()
+      country: geo.country
     })
   });
 
@@ -394,14 +454,17 @@ async function fetchWeeklyShareData() {
 async function buildShareText(finalScore) {
   const weekly = await fetchWeeklyShareData();
   const mode = getMode();
+  const geo = await detectGeoInfo();
 
   return [
     `I scored ${finalScore} in Neon World '99 🎮`,
-    `City: ${currentCity}`,
+    `Stage: ${currentCity}`,
+    `Region: ${geo.city}, ${geo.country}`,
     mode === "ranked" ? "Ranked mode live on Solana." : "Retro rhythm arcade on Solana.",
     `Weekly Jackpot: ${weekly.jackpot}`,
     `Current Leader: ${weekly.leader}`,
     "",
+    `Can you beat me?`,
     `Play now: ${SITE_URL}`
   ].join("\n");
 }
@@ -423,14 +486,12 @@ async function shareScore(finalScore) {
   location.href = xUrl;
 }
 
-// ---------------- GLOBALS ----------------
-let currentCity = localStorage.getItem("neon99_city") || "";
-let bestScore = loadBest();
-
 // ---------------- GAME BOOT ----------------
 async function bootGame() {
   const app = document.getElementById("app");
   if (!app) return;
+
+  await detectGeoInfo();
 
   if (!currentCity) {
     location.href = "/city.html";
@@ -699,6 +760,7 @@ async function endGame(finalScore, stats = {}) {
     const modeNow = getMode();
     const wallet = (modeNow === "ranked" ? (getWallet() || "") : "") || "guest";
     const durationMs = Math.max(0, Date.now() - Number(runStartedAt || Date.now()));
+    const geo = await detectGeoInfo();
 
     const res = await fetch("/api/submit-score", {
       method: "POST",
@@ -708,7 +770,7 @@ async function endGame(finalScore, stats = {}) {
         run_token: currentRunToken,
         score: Number(finalScore),
         city: currentCity,
-        country: getCountry(),
+        country: geo.country,
         mode: modeNow,
         hit_count: Number(stats.hitCount || 0),
         miss_count: Number(stats.missCount || 0),
