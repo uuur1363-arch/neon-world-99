@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta charset="UTF-8">
+<title>NEON WORLD '99 — CHALLENGE</title>
+
+<style>
+
+body{
+margin:0;
+padding:30px 16px;
+background:#000;
+color:white;
+font-family:monospace;
+text-align:center;
+}
+
+h1{
+color:#00d4ff;
+margin-bottom:10px;
+}
+
+.card{
+max-width:420px;
+margin:0 auto 14px;
+padding:18px;
+border-radius:14px;
+border:1px solid rgba(255,255,255,.15);
+background:rgba(255,255,255,.05);
+}
+
+.label{
+font-size:12px;
+color:#aaa;
+margin-bottom:6px;
+}
+
+.big{
+font-size:22px;
+font-weight:bold;
+}
+
+.btn{
+width:100%;
+padding:14px;
+margin-top:10px;
+border:none;
+border-radius:12px;
+background:#00d4ff;
+color:black;
+font-weight:bold;
+font-family:monospace;
+}
+
+.btn2{
+background:#222;
+color:#ddd;
+border:1px solid #444;
+}
+
+.small{
+font-size:12px;
+color:#888;
+margin-top:8px;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>CHALLENGE</h1>
+
+<div class="card">
+<div class="label">SCORE TO BEAT</div>
+<div id="score" class="big">...</div>
+</div>
+
+<div class="card">
+<div class="label">CREATED BY</div>
+<div id="creator" class="big">...</div>
+</div>
+
+<div class="card">
+<div class="label">BOUNTY</div>
+<div id="bounty" class="big">...</div>
+</div>
+
+<div class="card">
+<div class="label">CITY</div>
+<div id="city" class="big">...</div>
+</div>
+
+<div id="status" class="small"></div>
+
+<button id="playBtn" class="btn">PLAY CHALLENGE</button>
+<button id="shareBtn" class="btn btn2">SHARE</button>
+<button onclick="location.href='/'" class="btn btn2">HOME</button>
+
+<script>
+
+function shortWallet(w){
+const s = String(w||"");
+if(!s) return "unknown";
+if(s.length<10) return s;
+return s.slice(0,4)+"..."+s.slice(-4);
+}
+
+function getId(){
+const p = new URLSearchParams(location.search);
+return p.get("id") || "";
+}
+
+async function loadChallenge(){
+
+const id = getId();
+
+if(!id){
+document.getElementById("status").innerText="Invalid challenge link";
+return;
+}
+
+try{
+
+const r = await fetch(`/api/get-challenge?id=${encodeURIComponent(id)}`);
+const j = await r.json();
+
+if(!r.ok || !j.ok){
+document.getElementById("status").innerText="Challenge not found";
+return;
+}
+
+const c = j.challenge;
+
+document.getElementById("score").innerText = c.score_to_beat;
+document.getElementById("creator").innerText = shortWallet(c.creator_wallet);
+document.getElementById("bounty").innerText = `${c.bounty_sol} SOL`;
+document.getElementById("city").innerText = c.city;
+
+if(c.status === "claimed"){
+document.getElementById("status").innerText =
+`Challenge claimed by ${shortWallet(c.winner_wallet)}`;
+}
+
+}catch{
+
+document.getElementById("status").innerText="Failed to load challenge";
+
+}
+
+}
+
+document.getElementById("playBtn").onclick = () => {
+
+const id = getId();
+
+localStorage.setItem("neon99_active_challenge", id);
+
+location.href = "/city.html";
+
+};
+
+document.getElementById("shareBtn").onclick = () => {
+
+const url = location.href;
+
+const text = `Beat this Neon World '99 score challenge!\n${url}`;
+
+const x = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+
+location.href = x;
+
+};
+
+loadChallenge();
+
+</script>
+
+</body>
+</html>
