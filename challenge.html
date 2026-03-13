@@ -1,181 +1,271 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<meta charset="UTF-8">
-<title>NEON WORLD '99 — CHALLENGE</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta charset="UTF-8">
+  <title>NEON WORLD '99 — CHALLENGE</title>
+  <style>
+    body{
+      margin:0;
+      padding:30px 16px 36px;
+      background:
+        radial-gradient(circle at top, rgba(0,212,255,.08), transparent 35%),
+        radial-gradient(circle at bottom, rgba(255,45,107,.06), transparent 35%),
+        #000;
+      color:#fff;
+      font-family:monospace;
+      text-align:center;
+      -webkit-user-select:none;
+      user-select:none;
+      -webkit-touch-callout:none;
+    }
 
-<style>
+    h1{
+      color:#00d4ff;
+      margin:8px 0 12px;
+      text-shadow:0 0 10px rgba(0,212,255,.22);
+    }
 
-body{
-margin:0;
-padding:30px 16px;
-background:#000;
-color:white;
-font-family:monospace;
-text-align:center;
-}
+    .sub{
+      color:rgba(255,255,255,.72);
+      font-size:12px;
+      max-width:430px;
+      margin:0 auto 18px;
+      line-height:1.55;
+    }
 
-h1{
-color:#00d4ff;
-margin-bottom:10px;
-}
+    .card{
+      max-width:460px;
+      margin:0 auto 14px;
+      padding:18px 16px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.04);
+      text-align:left;
+    }
 
-.card{
-max-width:420px;
-margin:0 auto 14px;
-padding:18px;
-border-radius:14px;
-border:1px solid rgba(255,255,255,.15);
-background:rgba(255,255,255,.05);
-}
+    .label{
+      font-size:12px;
+      color:#aaa;
+      margin-bottom:6px;
+    }
 
-.label{
-font-size:12px;
-color:#aaa;
-margin-bottom:6px;
-}
+    .big{
+      font-size:22px;
+      color:#fff;
+      font-weight:bold;
+      word-break:break-word;
+    }
 
-.big{
-font-size:22px;
-font-weight:bold;
-}
+    .muted{
+      font-size:12px;
+      color:#888;
+      line-height:1.6;
+    }
 
-.btn{
-width:100%;
-padding:14px;
-margin-top:10px;
-border:none;
-border-radius:12px;
-background:#00d4ff;
-color:black;
-font-weight:bold;
-font-family:monospace;
-}
+    .actions{
+      max-width:460px;
+      margin:18px auto 0;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
 
-.btn2{
-background:#222;
-color:#ddd;
-border:1px solid #444;
-}
+    .btn{
+      width:100%;
+      padding:14px;
+      border:none;
+      border-radius:12px;
+      font-family:monospace;
+      font-weight:bold;
+      cursor:pointer;
+      -webkit-tap-highlight-color:transparent;
+    }
 
-.small{
-font-size:12px;
-color:#888;
-margin-top:8px;
-}
+    .primary{
+      background:#00d4ff;
+      color:#000;
+    }
 
-</style>
+    .secondary{
+      background:#222;
+      color:#ddd;
+      border:1px solid #444;
+    }
+
+    .danger{
+      background:#4b0f1f;
+      color:#ffb3c1;
+      border:1px solid #7a2039;
+    }
+
+    #status{
+      max-width:460px;
+      margin:12px auto 0;
+      font-size:12px;
+      color:#aaa;
+      white-space:pre-wrap;
+      line-height:1.5;
+    }
+  </style>
 </head>
-
 <body>
 
-<h1>CHALLENGE</h1>
+  <h1>CHALLENGE</h1>
+  <div class="sub">
+    Beat the posted score, prove your skill, and share the result.
+  </div>
 
-<div class="card">
-<div class="label">SCORE TO BEAT</div>
-<div id="score" class="big">...</div>
-</div>
+  <div class="card">
+    <div class="label">SCORE TO BEAT</div>
+    <div id="score" class="big">Loading...</div>
+  </div>
 
-<div class="card">
-<div class="label">CREATED BY</div>
-<div id="creator" class="big">...</div>
-</div>
+  <div class="card">
+    <div class="label">CREATED BY</div>
+    <div id="creator" class="big">Loading...</div>
+  </div>
 
-<div class="card">
-<div class="label">BOUNTY</div>
-<div id="bounty" class="big">...</div>
-</div>
+  <div class="card">
+    <div class="label">BOUNTY</div>
+    <div id="bounty" class="big">Loading...</div>
+  </div>
 
-<div class="card">
-<div class="label">CITY</div>
-<div id="city" class="big">...</div>
-</div>
+  <div class="card">
+    <div class="label">CITY</div>
+    <div id="city" class="big">Loading...</div>
+  </div>
 
-<div id="status" class="small"></div>
+  <div class="card">
+    <div class="label">STATUS</div>
+    <div id="challengeStatus" class="big">Loading...</div>
+    <div id="extraInfo" class="muted" style="margin-top:8px;"></div>
+  </div>
 
-<button id="playBtn" class="btn">PLAY CHALLENGE</button>
-<button id="shareBtn" class="btn btn2">SHARE</button>
-<button onclick="location.href='/'" class="btn btn2">HOME</button>
+  <div class="actions">
+    <button id="playBtn" class="btn primary">PLAY CHALLENGE</button>
+    <button id="shareBtn" class="btn secondary">SHARE</button>
+    <button id="homeBtn" class="btn secondary">HOME</button>
+  </div>
 
-<script>
+  <div id="status"></div>
 
-function shortWallet(w){
-const s = String(w||"");
-if(!s) return "unknown";
-if(s.length<10) return s;
-return s.slice(0,4)+"..."+s.slice(-4);
-}
+  <script>
+    function shortWallet(w) {
+      const s = String(w || "");
+      if (!s) return "unknown";
+      if (s.length <= 12) return s;
+      return s.slice(0, 4) + "..." + s.slice(-4);
+    }
 
-function getId(){
-const p = new URLSearchParams(location.search);
-return p.get("id") || "";
-}
+    function getChallengeId() {
+      const p = new URLSearchParams(window.location.search);
+      return String(p.get("id") || "").trim();
+    }
 
-async function loadChallenge(){
+    function setStatus(msg, isError = false) {
+      const el = document.getElementById("status");
+      el.textContent = msg || "";
+      el.style.color = isError ? "#ff8da1" : "#aaa";
+    }
 
-const id = getId();
+    async function loadChallenge() {
+      const id = getChallengeId();
 
-if(!id){
-document.getElementById("status").innerText="Invalid challenge link";
-return;
-}
+      if (!id) {
+        document.getElementById("score").textContent = "—";
+        document.getElementById("creator").textContent = "—";
+        document.getElementById("bounty").textContent = "—";
+        document.getElementById("city").textContent = "—";
+        document.getElementById("challengeStatus").textContent = "INVALID";
+        setStatus("Missing challenge id in URL.", true);
+        return;
+      }
 
-try{
+      try {
+        const r = await fetch(`/api/get-challenge?id=${encodeURIComponent(id)}`, {
+          method: "GET"
+        });
 
-const r = await fetch(`/api/get-challenge?id=${encodeURIComponent(id)}`);
-const j = await r.json();
+        let j = {};
+        try {
+          j = await r.json();
+        } catch {}
 
-if(!r.ok || !j.ok){
-document.getElementById("status").innerText="Challenge not found";
-return;
-}
+        if (!r.ok || !j.ok || !j.challenge) {
+          document.getElementById("score").textContent = "—";
+          document.getElementById("creator").textContent = "—";
+          document.getElementById("bounty").textContent = "—";
+          document.getElementById("city").textContent = "—";
+          document.getElementById("challengeStatus").textContent = "NOT FOUND";
+          setStatus(j.error || "Challenge not found.", true);
+          return;
+        }
 
-const c = j.challenge;
+        const c = j.challenge;
 
-document.getElementById("score").innerText = c.score_to_beat;
-document.getElementById("creator").innerText = shortWallet(c.creator_wallet);
-document.getElementById("bounty").innerText = `${c.bounty_sol} SOL`;
-document.getElementById("city").innerText = c.city;
+        document.getElementById("score").textContent = String(Number(c.score_to_beat || 0));
+        document.getElementById("creator").textContent = shortWallet(c.creator_wallet);
+        document.getElementById("bounty").textContent = `${Number(c.bounty_sol || 0).toFixed(3)} SOL`;
+        document.getElementById("city").textContent = String(c.city || "unknown");
 
-if(c.status === "claimed"){
-document.getElementById("status").innerText =
-`Challenge claimed by ${shortWallet(c.winner_wallet)}`;
-}
+        const statusText = String(c.status || "open").toUpperCase();
+        document.getElementById("challengeStatus").textContent = statusText;
 
-}catch{
+        if (c.status === "claimed") {
+          document.getElementById("extraInfo").textContent =
+            `Winner: ${shortWallet(c.winner_wallet || "")}`;
+        } else {
+          document.getElementById("extraInfo").textContent =
+            `Week: ${String(c.week_key || "")}`;
+        }
 
-document.getElementById("status").innerText="Failed to load challenge";
+        setStatus("Challenge loaded.");
+      } catch (e) {
+        document.getElementById("challengeStatus").textContent = "ERROR";
+        setStatus(`Failed to load challenge: ${String(e.message || e)}`, true);
+      }
+    }
 
-}
+    document.getElementById("playBtn").addEventListener("click", () => {
+      const id = getChallengeId();
 
-}
+      if (!id) {
+        setStatus("Challenge id missing.", true);
+        return;
+      }
 
-document.getElementById("playBtn").onclick = () => {
+      try {
+        localStorage.setItem("neon99_active_challenge", id);
+      } catch {}
 
-const id = getId();
+      window.location.href = "/city.html";
+    });
 
-localStorage.setItem("neon99_active_challenge", id);
+    document.getElementById("shareBtn").addEventListener("click", async () => {
+      const url = window.location.href;
+      const text = `Beat this Neon World '99 challenge:\n${url}`;
 
-location.href = "/city.html";
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: "Neon World '99 Challenge",
+            text
+          });
+          return;
+        } catch {}
+      }
 
-};
+      window.location.href =
+        `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+    });
 
-document.getElementById("shareBtn").onclick = () => {
+    document.getElementById("homeBtn").addEventListener("click", () => {
+      window.location.href = "/index.html";
+    });
 
-const url = location.href;
-
-const text = `Beat this Neon World '99 score challenge!\n${url}`;
-
-const x = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
-
-location.href = x;
-
-};
-
-loadChallenge();
-
-</script>
+    loadChallenge();
+  </script>
 
 </body>
 </html>
