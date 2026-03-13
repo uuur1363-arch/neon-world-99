@@ -371,6 +371,10 @@ let runStartedAt = 0;
 let currentCity = localStorage.getItem("neon99_city") || "";
 let bestScore = loadBest();
 
+// ---------------- CHALLENGE STATE ----------------
+let lastCreatedChallengeUrl = "";
+let lastFinalScore = 0;
+
 async function createRunToken(cityName) {
   const modeNow = getMode();
   const wallet = (modeNow === "ranked" ? (getWallet() || "") : "") || "guest";
@@ -442,6 +446,16 @@ async function buildShareText(finalScore) {
   ].join("\n");
 }
 
+async function buildChallengeShareText(challengeUrl, finalScore) {
+  return [
+    `Beat my Neon World '99 challenge.`,
+    `Score to beat: ${finalScore}`,
+    `Stage: ${currentCity}`,
+    "",
+    challengeUrl
+  ].join("\n");
+}
+
 async function shareScore(finalScore) {
   const text = await buildShareText(finalScore);
 
@@ -454,6 +468,57 @@ async function shareScore(finalScore) {
 
   const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
   location.href = xUrl;
+}
+
+async function shareChallengeLink(challengeUrl, finalScore) {
+  const text = await buildChallengeShareText(challengeUrl, finalScore);
+
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: "Neon World '99 Challenge",
+        text
+      });
+      return;
+    } catch {}
+  }
+
+  const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+  location.href = xUrl;
+}
+
+async function createChallenge(finalScore) {
+  const wallet = getWallet();
+  if (!wallet) {
+    throw new Error("Wallet required for challenge creation");
+  }
+
+  const geo = await detectGeoInfo();
+
+  const res = await fetch("/api/challenge?action=create", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      wallet,
+      city: currentCity,
+      country: geo.country,
+      score: Number(finalScore),
+      bounty_sol: 0
+    })
+  });
+
+  let data = {};
+  try {
+    data = await res.json();
+  } catch {}
+
+  if (!res.ok || !data.ok) {
+    throw new Error(data.error || "Failed to create challenge");
+  }
+
+  return String(data.challenge_url || "");
 }
 
 // ---------------- BOOT ----------------
@@ -504,6 +569,8 @@ async function bootGame() {
 function startGame() {
   applyBackground(currentCity);
   stopMusic();
+  lastCreatedChallengeUrl = "";
+  lastFinalScore = 0;
 
   const accent = getAccent(currentCity);
   const app = document.getElementById("app");
@@ -718,6 +785,8 @@ async function endGame(finalScore, stats = {}) {
   bestScore = Math.max(loadBest(), finalScore);
   saveBest(bestScore);
   saveCityScore(currentCity, finalScore);
+  lastFinalScore = finalScore;
+  lastCreatedChallengeUrl = "";
 
   let submitState = "NOT SENT";
 
@@ -773,6 +842,11 @@ function showEndScreen(finalScore, submitState = "UNKNOWN") {
     ? `NEXT CITY: ${next} | NEED: ${CITY_REQUIRE[next]} | STATUS: ${cityUnlocked(next) ? "UNLOCKED" : "LOCKED"}`
     : "ALL CITIES CLEARED";
 
+  const canCreateChallenge =
+    getMode() === "ranked" &&
+    !!getWallet() &&
+    submitState === "VERIFIED";
+
   app.innerHTML = `
     <div style="text-align:center;color:white;font-family:monospace;padding:24px 16px;min-height:100vh;box-sizing:border-box;background:rgba(0,0,0,.42)">
       <div style="font-size:12px;color:rgba(255,255,255,.72)">STAGE CLEAR</div>
@@ -787,10 +861,22 @@ function showEndScreen(finalScore, submitState = "UNKNOWN") {
         <div style="margin-top:8px;font-size:12px;color:#aaa">${nextText}</div>
       </div>
 
+      <div id="challengeInfo" style="max-width:420px;margin:12px auto 0;font-size:12px;color:#aaa;line-height:1.6;"></div>
+
       <div style="margin-top:18px;display:flex;flex-direction:column;gap:10px;align-items:center">
         <button id="shareBtn" style="width:100%;max-width:420px;padding:14px;border:none;border-radius:12px;background:${accent};color:#000;font-family:monospace;font-weight:bold">
           SHARE SCORE
         </button>
+
+        ${canCreateChallenge ? `
+          <button id="challengeBtn" style="width:100%;max-width:420px;padding:14px;border:none;border-radius:12px;background:#00d4ff;color:#000;font-family:monospace;font-weight:bold">
+            CREATE CHALLENGE
+          </button>
+          <button id="shareChallengeBtn" style="width:100%;max-width:420px;padding:14px;border:none;border-radius:12px;background:#222;color:#ddd;border:1px solid #444;font-family:monospace;font-weight:bold">
+            SHARE CHALLENGE
+          </button>
+        ` : ""}
+
         <button id="againBtn" style="width:100%;max-width:420px;padding:14px;border:none;border-radius:12px;background:#222;color:#ddd;border:1px solid #444;font-family:monospace;font-weight:bold">
           PLAY AGAIN
         </button>
@@ -804,9 +890,50 @@ function showEndScreen(finalScore, submitState = "UNKNOWN") {
     </div>
   `;
 
+  const challengeInfo = document.getElementById("challengeInfo");
+
   document.getElementById("shareBtn").onclick = async () => {
     await shareScore(finalScore);
   };
+
+  if (canCreateChallenge) {
+    const challengeBtn = document.getElementById("challengeBtn");
+    const shareChallengeBtn = document.getElementById("shareChallengeBtn");
+
+    challengeBtn.onclick = async () => {
+      try {
+        challengeBtn.disabled = true;
+        challengeBtn.textContent = "CREATING CHALLENGE...";
+
+        const url = await createChallenge(finalScore);
+        lastCreatedChallengeUrl = url;
+
+        challengeInfo.innerHTML =
+          `Challenge created.<br><span style="color:#00d4ff">${escapeHtml(url)}</span>`;
+
+        challengeBtn.textContent = "CHALLENGE CREATED";
+      } catch (e) {
+        challengeInfo.textContent = "Challenge creation failed: " + String(e.message || e);
+        challengeBtn.disabled = false;
+        challengeBtn.textContent = "CREATE CHALLENGE";
+      }
+    };
+
+    shareChallengeBtn.onclick = async () => {
+      try {
+        if (!lastCreatedChallengeUrl) {
+          const url = await createChallenge(finalScore);
+          lastCreatedChallengeUrl = url;
+          challengeInfo.innerHTML =
+            `Challenge created.<br><span style="color:#00d4ff">${escapeHtml(url)}</span>`;
+        }
+
+        await shareChallengeLink(lastCreatedChallengeUrl, finalScore);
+      } catch (e) {
+        challengeInfo.textContent = "Challenge share failed: " + String(e.message || e);
+      }
+    };
+  }
 
   document.getElementById("againBtn").onclick = async () => {
     try {
