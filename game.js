@@ -32,16 +32,16 @@ const CITY_REQUIRE = {
 
 // ---------------- DIFFICULTY ----------------
 const CITY_DIFF = {
-  "New York":  { bpm: 110, note: 180, spawn: 1.00, accent: "#00d4ff" },
-  "Tokyo":     { bpm: 118, note: 195, spawn: 1.05, accent: "#ff4fd8" },
-  "Berlin":    { bpm: 122, note: 210, spawn: 1.10, accent: "#a8ff3e" },
-  "Rio":       { bpm: 126, note: 225, spawn: 1.15, accent: "#ffd166" },
-  "Seoul":     { bpm: 130, note: 240, spawn: 1.20, accent: "#7afcff" },
-  "London":    { bpm: 134, note: 255, spawn: 1.25, accent: "#c8b6ff" },
-  "Paris":     { bpm: 138, note: 270, spawn: 1.30, accent: "#ff99c8" },
-  "Dubai":     { bpm: 142, note: 285, spawn: 1.35, accent: "#f8e16c" },
-  "Singapore": { bpm: 146, note: 300, spawn: 1.40, accent: "#8be9fd" },
-  "Istanbul":  { bpm: 150, note: 320, spawn: 1.50, accent: "#ffb703" }
+  "New York":  { bpm: 110, note: 165, spawn: 0.92, accent: "#00d4ff" },
+  "Tokyo":     { bpm: 116, note: 178, spawn: 0.96, accent: "#ff4fd8" },
+  "Berlin":    { bpm: 120, note: 190, spawn: 1.00, accent: "#a8ff3e" },
+  "Rio":       { bpm: 124, note: 202, spawn: 1.04, accent: "#ffd166" },
+  "Seoul":     { bpm: 128, note: 214, spawn: 1.08, accent: "#7afcff" },
+  "London":    { bpm: 132, note: 228, spawn: 1.12, accent: "#c8b6ff" },
+  "Paris":     { bpm: 136, note: 242, spawn: 1.16, accent: "#ff99c8" },
+  "Dubai":     { bpm: 140, note: 258, spawn: 1.20, accent: "#f8e16c" },
+  "Singapore": { bpm: 144, note: 274, spawn: 1.25, accent: "#8be9fd" },
+  "Istanbul":  { bpm: 148, note: 292, spawn: 1.30, accent: "#ffb703" }
 };
 
 // ---------------- THEMES ----------------
@@ -70,6 +70,13 @@ const CITY_BGM = {
   "Singapore": "/bgm_lux.mp3",
   "Istanbul": "/bgm_lux.mp3"
 };
+
+// ---------------- FEEL TUNING ----------------
+const HIT_WINDOW = 34;
+const PERFECT_WINDOW = 18;
+const BAD_TAP_PENALTY = 20;
+const MISS_PENALTY = 35;
+const SPAWN_INTERVAL = 0.72;
 
 // ---------------- GLOBAL TOUCH / ZOOM LOCK ----------------
 (function lockMobileZoomAndGestures() {
@@ -433,6 +440,16 @@ async function buildShareText(finalScore) {
   const mode = getMode();
   const geo = await detectGeoInfo();
 
+  if (finalScore < 1000) {
+    return [
+      `Can you beat me in Neon World '99?`,
+      `Stage: ${currentCity}`,
+      `Weekly Jackpot: ${weekly.jackpot}`,
+      "",
+      `Play now: ${SITE_URL}`
+    ].join("\n");
+  }
+
   return [
     `I scored ${finalScore} in Neon World '99 🎮`,
     `Stage: ${currentCity}`,
@@ -448,10 +465,13 @@ async function buildShareText(finalScore) {
 
 async function buildChallengeShareText(challengeUrl, finalScore) {
   return [
-    `Beat my Neon World '99 challenge.`,
+    `🔥 Neon World '99 Challenge`,
+    ``,
     `Score to beat: ${finalScore}`,
     `Stage: ${currentCity}`,
-    "",
+    ``,
+    `Think you can beat me?`,
+    ``,
     challengeUrl
   ].join("\n");
 }
@@ -600,6 +620,10 @@ function startGame() {
         TAP = HIT · SWIPE = TEMPO
       </div>
 
+      <div style="margin-top:8px;font-size:12px;color:rgba(255,255,255,.58)">
+        Wider hit zone • smoother rhythm • one-thumb friendly
+      </div>
+
       <div style="margin-top:12px;display:flex;justify-content:center;gap:10px;flex-wrap:wrap">
         <button id="backBtn" style="padding:10px 14px;border:none;border-radius:10px;background:${accent};color:#000;font-family:monospace;font-weight:bold">
           BACK TO CITIES
@@ -642,6 +666,7 @@ function runGame() {
   const notes = [];
   let spawnTimer = 0;
   let last = performance.now();
+  let pulse = 0;
 
   let lastTouchEnd = 0;
   cv.addEventListener("touchend", (e) => {
@@ -651,7 +676,12 @@ function runGame() {
   }, { passive: false });
 
   function spawn() {
-    notes.push({ y: -20, speed: diff.note });
+    const laneOffset = (Math.random() * 24) - 12;
+    notes.push({
+      y: -20,
+      x: (cv.width / 2) + laneOffset,
+      speed: diff.note * (0.96 + Math.random() * 0.08)
+    });
   }
 
   function hit(e) {
@@ -660,18 +690,37 @@ function runGame() {
     startMusicGesture(currentCity);
 
     const hitY = cv.height * 0.78;
-    const i = notes.findIndex((n) => Math.abs(n.y - hitY) < 20);
+    let bestIndex = -1;
+    let bestDistance = Infinity;
 
-    if (i >= 0) {
-      notes.splice(i, 1);
+    for (let i = 0; i < notes.length; i++) {
+      const d = Math.abs(notes[i].y - hitY);
+      if (d < bestDistance) {
+        bestDistance = d;
+        bestIndex = i;
+      }
+    }
+
+    if (bestIndex >= 0 && bestDistance <= HIT_WINDOW) {
+      const note = notes[bestIndex];
+      notes.splice(bestIndex, 1);
+
       combo++;
       hitCount++;
       if (combo > maxCombo) maxCombo = combo;
-      score += 200 + combo * 10;
+
+      if (bestDistance <= PERFECT_WINDOW) {
+        score += 140 + combo * 8;
+      } else {
+        score += 110 + combo * 6;
+      }
+
+      pulse = 1;
     } else {
       combo = 0;
       missCount++;
-      score = Math.max(0, score - 60);
+      score = Math.max(0, score - BAD_TAP_PENALTY);
+      pulse = -0.7;
     }
   }
 
@@ -694,8 +743,8 @@ function runGame() {
     const dx = x - sx;
 
     if (Math.abs(dx) > 30) {
-      bpm += dx > 0 ? 6 : -6;
-      bpm = Math.max(diff.bpm - 25, Math.min(diff.bpm + 25, bpm));
+      bpm += dx > 0 ? 5 : -5;
+      bpm = Math.max(diff.bpm - 18, Math.min(diff.bpm + 18, bpm));
       sx = x;
     }
   }, { passive: false });
@@ -711,8 +760,9 @@ function runGame() {
 
     time -= dt;
     spawnTimer += dt * diff.spawn * (bpm / diff.bpm);
+    pulse *= 0.9;
 
-    if (spawnTimer > 0.6) {
+    if (spawnTimer > SPAWN_INTERVAL) {
       spawnTimer = 0;
       spawn();
     }
@@ -721,42 +771,62 @@ function runGame() {
       notes[i].y += notes[i].speed * dt;
     }
 
+    const hitY = cv.height * 0.78;
+
     for (let i = notes.length - 1; i >= 0; i--) {
-      if (notes[i].y > cv.height * 0.78 + 40) {
+      if (notes[i].y > hitY + HIT_WINDOW + 26) {
         notes.splice(i, 1);
         combo = 0;
         missCount++;
-        score = Math.max(0, score - 80);
+        score = Math.max(0, score - MISS_PENALTY);
+        pulse = -0.5;
       }
     }
 
     ctx.clearRect(0, 0, cv.width, cv.height);
 
-    const hitY = cv.height * 0.78;
-
-    ctx.fillStyle = "rgba(0,0,0,0.28)";
+    ctx.fillStyle = "rgba(0,0,0,0.26)";
     ctx.fillRect(0, 0, cv.width, cv.height);
 
-    ctx.strokeStyle = "rgba(255,255,255,0.06)";
-    for (let y = 0; y < cv.height; y += 10) {
+    ctx.strokeStyle = "rgba(255,255,255,0.05)";
+    for (let y = 0; y < cv.height; y += 12) {
       ctx.beginPath();
       ctx.moveTo(0, y);
       ctx.lineTo(cv.width, y);
       ctx.stroke();
     }
 
+    ctx.fillStyle = "rgba(255,255,255,0.03)";
+    ctx.fillRect(0, hitY - HIT_WINDOW, cv.width, HIT_WINDOW * 2);
+
     ctx.strokeStyle = accent;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2 + Math.max(0, pulse * 2);
     ctx.beginPath();
     ctx.moveTo(0, hitY);
     ctx.lineTo(cv.width, hitY);
     ctx.stroke();
 
+    ctx.strokeStyle = "rgba(255,255,255,0.12)";
+    ctx.beginPath();
+    ctx.moveTo(0, hitY - HIT_WINDOW);
+    ctx.lineTo(cv.width, hitY - HIT_WINDOW);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(0, hitY + HIT_WINDOW);
+    ctx.lineTo(cv.width, hitY + HIT_WINDOW);
+    ctx.stroke();
+
     for (let i = 0; i < notes.length; i++) {
+      const note = notes[i];
+      const w = 76;
+      const h = 16;
+      const x = note.x - (w / 2);
+
       ctx.fillStyle = "#ff2d6b";
-      ctx.fillRect(cv.width / 2 - 35, notes[i].y, 70, 14);
-      ctx.strokeStyle = "rgba(255,255,255,.2)";
-      ctx.strokeRect(cv.width / 2 - 35, notes[i].y, 70, 14);
+      ctx.fillRect(x, note.y, w, h);
+      ctx.strokeStyle = "rgba(255,255,255,.24)";
+      ctx.strokeRect(x, note.y, w, h);
     }
 
     document.getElementById("t").textContent = String(Math.ceil(time));
@@ -847,6 +917,11 @@ function showEndScreen(finalScore, submitState = "UNKNOWN") {
     !!getWallet() &&
     submitState === "VERIFIED";
 
+  const modeLine =
+    submitState === "FLAGGED" && getMode() === "free"
+      ? "MODE: PRACTICE"
+      : `RANKED STATUS: ${escapeHtml(submitState)}`;
+
   app.innerHTML = `
     <div style="text-align:center;color:white;font-family:monospace;padding:24px 16px;min-height:100vh;box-sizing:border-box;background:rgba(0,0,0,.42)">
       <div style="font-size:12px;color:rgba(255,255,255,.72)">STAGE CLEAR</div>
@@ -855,7 +930,7 @@ function showEndScreen(finalScore, submitState = "UNKNOWN") {
       <div style="max-width:420px;margin:0 auto;border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:18px;background:rgba(255,255,255,.04);line-height:1.8">
         <div>CITY: <b>${escapeHtml(currentCity)}</b></div>
         <div>SCORE: <b>${finalScore}</b></div>
-        <div>RANKED STATUS: <b>${escapeHtml(submitState)}</b></div>
+        <div>${modeLine}</div>
         <div>CITY BEST: <b>${getCityScore(currentCity)}</b></div>
         <div>GLOBAL BEST: <b>${bestScore}</b></div>
         <div style="margin-top:8px;font-size:12px;color:#aaa">${nextText}</div>
