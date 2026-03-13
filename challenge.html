@@ -34,6 +34,18 @@
       line-height:1.55;
     }
 
+    .hero{
+      max-width:460px;
+      margin:0 auto 14px;
+      padding:16px;
+      border-radius:14px;
+      border:1px solid rgba(0,212,255,.22);
+      background:rgba(0,212,255,.06);
+      color:#dffbff;
+      font-size:13px;
+      line-height:1.7;
+    }
+
     .card{
       max-width:460px;
       margin:0 auto 14px;
@@ -93,6 +105,10 @@
       border:1px solid #444;
     }
 
+    .accent{
+      color:#00d4ff;
+    }
+
     #status{
       max-width:460px;
       margin:12px auto 0;
@@ -105,9 +121,13 @@
 </head>
 <body>
 
-  <h1>CHALLENGE</h1>
+  <h1>YOU WERE CHALLENGED</h1>
   <div class="sub">
-    Beat the posted score, prove your skill, and become the new leader.
+    Beat the posted score, prove your skill, and take the top spot.
+  </div>
+
+  <div class="hero" id="heroText">
+    Loading challenge...
   </div>
 
   <div class="card">
@@ -142,7 +162,7 @@
   </div>
 
   <div class="actions">
-    <button id="playBtn" class="btn primary">PLAY CHALLENGE</button>
+    <button id="playBtn" class="btn primary">BEAT THIS SCORE</button>
     <button id="shareBtn" class="btn secondary">SHARE CHALLENGE</button>
     <button id="boardBtn" class="btn secondary">LEADERBOARD</button>
     <button id="homeBtn" class="btn secondary">HOME</button>
@@ -179,6 +199,7 @@
         document.getElementById("country").textContent = "—";
         document.getElementById("bounty").textContent = "—";
         document.getElementById("challengeStatus").textContent = "INVALID";
+        document.getElementById("heroText").innerHTML = `Challenge link is invalid.`;
         setStatus("Missing challenge id in URL.", true);
         return;
       }
@@ -200,24 +221,34 @@
           document.getElementById("country").textContent = "—";
           document.getElementById("bounty").textContent = "—";
           document.getElementById("challengeStatus").textContent = "NOT FOUND";
+          document.getElementById("heroText").innerHTML = `This challenge could not be found.`;
           setStatus(j.error || "Challenge not found.", true);
           return;
         }
 
         const c = j.challenge;
-
-        document.getElementById("score").textContent = String(Number(c.score_to_beat || 0));
-        document.getElementById("creator").textContent = shortWallet(c.creator_wallet);
-        document.getElementById("city").textContent = String(c.city || "unknown");
-        document.getElementById("country").textContent = String(c.country || "unknown");
-        document.getElementById("bounty").textContent = `${Number(c.bounty_sol || 0).toFixed(3)} SOL`;
-
+        const score = Number(c.score_to_beat || 0);
+        const creator = shortWallet(c.creator_wallet);
+        const city = String(c.city || "unknown");
+        const country = String(c.country || "unknown");
+        const bounty = Number(c.bounty_sol || 0).toFixed(3);
         const statusText = String(c.status || "open").toUpperCase();
+
+        document.getElementById("score").textContent = String(score);
+        document.getElementById("creator").textContent = creator;
+        document.getElementById("city").textContent = city;
+        document.getElementById("country").textContent = country;
+        document.getElementById("bounty").textContent = `${bounty} SOL`;
         document.getElementById("challengeStatus").textContent = statusText;
+
+        document.getElementById("heroText").innerHTML =
+          `A player challenged you to beat <span class="accent">${score}</span> points in <span class="accent">${city}</span>.`;
 
         if (String(c.status || "") === "claimed") {
           document.getElementById("extraInfo").textContent =
             `Winner: ${shortWallet(c.winner_wallet || "")} • Score: ${Number(c.winning_score || 0)}`;
+          document.getElementById("heroText").innerHTML =
+            `This challenge was already beaten. Top score: ${Number(c.winning_score || 0)}.`;
         } else {
           document.getElementById("extraInfo").textContent =
             `Week: ${String(c.week_key || "")}`;
@@ -226,6 +257,7 @@
         setStatus("Challenge loaded.");
       } catch (e) {
         document.getElementById("challengeStatus").textContent = "ERROR";
+        document.getElementById("heroText").innerHTML = `Challenge could not be loaded.`;
         setStatus(`Failed to load challenge: ${String(e.message || e)}`, true);
       }
     }
@@ -252,9 +284,10 @@
       const city = document.getElementById("city").textContent || "unknown";
 
       const text =
-        `Beat my Neon World '99 challenge.\n` +
-        `Score to beat: ${score}\n` +
+        `🔥 Beat my Neon World '99 score\n\n` +
+        `Score: ${score}\n` +
         `City: ${city}\n\n` +
+        `Can you beat me?\n\n` +
         `${url}`;
 
       if (navigator.share) {
