@@ -92,7 +92,8 @@ export default async function handler(req, res) {
           winning_score: toSafeScore(data.winning_score),
           created_at: Number(data.created_at || 0),
           claimed_at: Number(data.claimed_at || 0),
-          week_key: String(data.week_key || "")
+          week_key: String(data.week_key || ""),
+          run_token: String(data.run_token || "")
         }
       });
     }
@@ -116,11 +117,19 @@ export default async function handler(req, res) {
         const country = normalizeCountry(body.country);
         const score = toSafeScore(body.score);
         const bounty = toSafeBounty(body.bounty_sol);
+        const runToken = String(body.run_token || "").trim();
 
-        if (!wallet) {
+        if (!wallet || wallet === "guest") {
           return res.status(400).json({
             ok: false,
-            error: "wallet required"
+            error: "valid wallet required"
+          });
+        }
+
+        if (!runToken) {
+          return res.status(400).json({
+            ok: false,
+            error: "run_token required"
           });
         }
 
@@ -138,9 +147,105 @@ export default async function handler(req, res) {
           });
         }
 
+        const { data: run, error: runError } = await db
+          .from("game_runs")
+          .select("run_token, wallet, city, country, mode, used_at, final_score, verification_status, week_key")
+          .eq("run_token", runToken)
+          .maybeSingle();
+
+        if (runError) {
+          return res.status(500).json({
+            ok: false,
+            error: runError.message || "Failed to validate run"
+          });
+        }
+
+        if (!run) {
+          return res.status(400).json({
+            ok: false,
+            error: "run not found"
+          });
+        }
+
+        if (String(run.wallet || "") !== wallet) {
+          return res.status(403).json({
+            ok: false,
+            error: "wallet mismatch"
+          });
+        }
+
+        if (Number(run.used_at || 0) <= 0) {
+          return res.status(400).json({
+            ok: false,
+            error: "run not finalized"
+          });
+        }
+
+        if (String(run.verification_status || "") !== "verified") {
+          return res.status(400).json({
+            ok: false,
+            error: "only verified runs can create challenges"
+          });
+        }
+
+        const verifiedScore = toSafeScore(run.final_score);
+        if (verifiedScore <= 0) {
+          return res.status(400).json({
+            ok: false,
+            error: "verified final score not found"
+          });
+        }
+
+        if (score !== verifiedScore) {
+          return res.status(400).json({
+            ok: false,
+            error: "score must match verified run score"
+          });
+        }
+
+        if (city !== String(run.city || "")) {
+          return res.status(400).json({
+            ok: false,
+            error: "city must match verified run city"
+          });
+        }
+
+        const { data: existingChallenge, error: existingChallengeError } = await db
+          .from("challenges")
+          .select("id, status")
+          .eq("run_token", runToken)
+          .maybeSingle();
+
+        if (existingChallengeError) {
+          return res.status(500).json({
+            ok: false,
+            error: existingChallengeError.message || "Failed to check existing challenge"
+          });
+        }
+
+        if (existingChallenge) {
+          return res.status(200).json({
+            ok: true,
+            reused: true,
+            id: String(existingChallenge.id || ""),
+            challenge_url: buildChallengeUrl(req, String(existingChallenge.id || "")),
+            challenge: {
+              id: String(existingChallenge.id || ""),
+              creator_wallet: wallet,
+              city,
+              country,
+              score_to_beat: verifiedScore,
+              bounty_sol: bounty,
+              status: String(existingChallenge.status || "open"),
+              run_token: runToken,
+              week_key: String(run.week_key || currentWeekKey())
+            }
+          });
+        }
+
         const id = randomId();
         const createdAt = nowMs();
-        const weekKey = currentWeekKey();
+        const weekKey = String(run.week_key || currentWeekKey());
 
         const { error } = await db
           .from("challenges")
@@ -149,11 +254,12 @@ export default async function handler(req, res) {
             creator_wallet: wallet,
             city,
             country,
-            score_to_beat: score,
+            score_to_beat: verifiedScore,
             bounty_sol: bounty,
             status: "open",
             created_at: createdAt,
-            week_key: weekKey
+            week_key: weekKey,
+            run_token: runToken
           });
 
         if (error) {
@@ -165,6 +271,7 @@ export default async function handler(req, res) {
 
         return res.status(200).json({
           ok: true,
+          reused: false,
           id,
           challenge_url: buildChallengeUrl(req, id),
           challenge: {
@@ -172,121 +279,20 @@ export default async function handler(req, res) {
             creator_wallet: wallet,
             city,
             country,
-            score_to_beat: score,
+            score_to_beat: verifiedScore,
             bounty_sol: bounty,
             status: "open",
             created_at: createdAt,
-            week_key: weekKey
+            week_key: weekKey,
+            run_token: runToken
           }
         });
       }
 
       if (action === "claim") {
-        const id = String(body.id || "").trim();
-        const wallet = normalizeWallet(body.wallet);
-        const score = toSafeScore(body.score);
-
-        if (!id || !wallet) {
-          return res.status(400).json({
-            ok: false,
-            error: "id and wallet required"
-          });
-        }
-
-        if (score <= 0) {
-          return res.status(400).json({
-            ok: false,
-            error: "valid score required"
-          });
-        }
-
-        const { data: challenge, error: readError } = await db
-          .from("challenges")
-          .select("*")
-          .eq("id", id)
-          .maybeSingle();
-
-        if (readError) {
-          return res.status(500).json({
-            ok: false,
-            error: readError.message || "Failed to load challenge"
-          });
-        }
-
-        if (!challenge) {
-          return res.status(404).json({
-            ok: false,
-            error: "challenge not found"
-          });
-        }
-
-        if (String(challenge.creator_wallet || "") === wallet) {
-          return res.status(400).json({
-            ok: false,
-            error: "creator cannot claim own challenge"
-          });
-        }
-
-        if (String(challenge.status || "") !== "open") {
-          return res.status(400).json({
-            ok: false,
-            error: "challenge already claimed"
-          });
-        }
-
-        if (score <= toSafeScore(challenge.score_to_beat)) {
-          return res.status(400).json({
-            ok: false,
-            error: "score not high enough"
-          });
-        }
-
-        const claimedAt = nowMs();
-
-        const { data: updated, error: updateError } = await db
-          .from("challenges")
-          .update({
-            status: "claimed",
-            winner_wallet: wallet,
-            winning_score: score,
-            claimed_at: claimedAt
-          })
-          .eq("id", id)
-          .eq("status", "open")
-          .select("*");
-
-        if (updateError) {
-          return res.status(500).json({
-            ok: false,
-            error: updateError.message || "Failed to claim challenge"
-          });
-        }
-
-        if (!updated || updated.length === 0) {
-          return res.status(400).json({
-            ok: false,
-            error: "challenge already claimed"
-          });
-        }
-
-        const claimed = updated[0];
-
-        return res.status(200).json({
-          ok: true,
-          challenge: {
-            id: String(claimed.id || ""),
-            creator_wallet: String(claimed.creator_wallet || ""),
-            city: String(claimed.city || "unknown"),
-            country: String(claimed.country || "unknown"),
-            score_to_beat: toSafeScore(claimed.score_to_beat),
-            bounty_sol: toSafeBounty(claimed.bounty_sol),
-            status: String(claimed.status || "claimed"),
-            winner_wallet: String(claimed.winner_wallet || ""),
-            winning_score: toSafeScore(claimed.winning_score),
-            created_at: Number(claimed.created_at || 0),
-            claimed_at: Number(claimed.claimed_at || 0),
-            week_key: String(claimed.week_key || "")
-          }
+        return res.status(403).json({
+          ok: false,
+          error: "public claim disabled"
         });
       }
 
