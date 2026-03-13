@@ -52,7 +52,7 @@ export default async function handler(req, res) {
     if (!tx) {
       return res.status(400).json({
         ok: false,
-        error: "Tx not found/confirmed yet"
+        error: "Transaction not found"
       });
     }
 
@@ -63,8 +63,8 @@ export default async function handler(req, res) {
       });
     }
 
-    const feePayer = tx.transaction?.message?.accountKeys?.[0]?.pubkey?.toString();
-    if (!feePayer || feePayer !== wallet) {
+    const feePayer = tx.transaction.message.accountKeys[0].pubkey.toString();
+    if (feePayer !== wallet) {
       return res.status(400).json({
         ok: false,
         error: "Wallet mismatch"
@@ -79,14 +79,10 @@ export default async function handler(req, res) {
     for (const ix of tx.transaction.message.instructions || []) {
       if (ix.program === "system" && ix.parsed?.type === "transfer") {
         const info = ix.parsed.info || {};
-        const source = String(info.source || "");
-        const dest = String(info.destination || "");
-        const lamports = Number(info.lamports || 0);
-
         if (
-          source === wallet &&
-          dest === treasuryPk.toString() &&
-          lamports >= needLamports
+          String(info.source || "") === wallet &&
+          String(info.destination || "") === treasuryPk.toString() &&
+          Number(info.lamports || 0) >= needLamports
         ) {
           transferOk = true;
         }
@@ -96,71 +92,47 @@ export default async function handler(req, res) {
     if (!transferOk) {
       return res.status(400).json({
         ok: false,
-        error: "Transfer not found / amount too low"
+        error: "Payment not detected"
       });
     }
 
     const db = supa();
     const now = nowMs();
 
-    const { data: existingSig, error: existingSigError } = await db
+    const { data: existingSig, error: sigReadError } = await db
       .from("used_signatures")
       .select("sig")
       .eq("sig", signature)
       .maybeSingle();
 
-    if (existingSigError) {
+    if (sigReadError) {
       return res.status(500).json({
         ok: false,
-        error: existingSigError.message || "Failed to check signature"
+        error: sigReadError.message || "Failed to read signatures"
       });
     }
 
-    if (existingSig) {
-      const { data: existingUser, error: existingUserError } = await db
-        .from("users")
-        .select("wallet, pass_until")
-        .eq("wallet", wallet)
-        .maybeSingle();
-
-      if (existingUserError) {
-        return res.status(500).json({
-          ok: false,
-          error: existingUserError.message || "Failed to read existing user"
+    if (!existingSig) {
+      const { error: sigInsertError } = await db
+        .from("used_signatures")
+        .insert({
+          sig: signature,
+          wallet,
+          used_at: now
         });
-      }
 
-      return res.status(200).json({
-        ok: true,
-        already_recovered: true,
-        pass_until: Number(existingUser?.pass_until || 0)
-      });
+      if (sigInsertError) {
+        const msg = String(sigInsertError.message || "").toLowerCase();
+        if (!(msg.includes("duplicate") || msg.includes("unique") || msg.includes("already"))) {
+          return res.status(500).json({
+            ok: false,
+            error: sigInsertError.message || "Failed to store signature"
+          });
+        }
+      }
     }
 
-    const { error: usedInsertError } = await db
-      .from("used_signatures")
-      .insert({
-        sig: signature,
-        wallet,
-        used_at: now
-      });
-
-    if (usedInsertError) {
-      const msg = String(usedInsertError.message || "").toLowerCase();
-      if (msg.includes("duplicate") || msg.includes("unique") || msg.includes("already")) {
-        return res.status(400).json({
-          ok: false,
-          error: "Signature already used"
-        });
-      }
-
-      return res.status(500).json({
-        ok: false,
-        error: usedInsertError.message || "Failed to store signature"
-      });
-    }
-
-    const { data: existingUser, error: userReadError } = await db
+    const { data: user, error: userReadError } = await db
       .from("users")
       .select("wallet, pass_until, best_score, created_at")
       .eq("wallet", wallet)
@@ -173,11 +145,11 @@ export default async function handler(req, res) {
       });
     }
 
-    const currentPassUntil = Number(existingUser?.pass_until || 0);
+    const currentPassUntil = Number(user?.pass_until || 0);
     const baseTime = currentPassUntil > now ? currentPassUntil : now;
     const passUntil = baseTime + PASS_HOURS * 60 * 60 * 1000;
 
-    if (existingUser) {
+    if (user) {
       const { error: updateError } = await db
         .from("users")
         .update({
@@ -197,8 +169,8 @@ export default async function handler(req, res) {
         .insert({
           wallet,
           pass_until: passUntil,
-          created_at: now,
-          best_score: 0
+          best_score: 0,
+          created_at: now
         });
 
       if (insertError) {
@@ -210,9 +182,9 @@ export default async function handler(req, res) {
     }
 
     const weekKey = currentWeekKey();
-    const jackpotLamports = 3000000;
+    const jackpotAdd = Math.round(ENTRY_SOL * 1e9 * 0.30);
 
-    const { data: existingJackpot, error: jackpotReadError } = await db
+    const { data: jackpot, error: jackpotReadError } = await db
       .from("weekly_jackpots")
       .select("*")
       .eq("week_key", weekKey)
@@ -225,12 +197,12 @@ export default async function handler(req, res) {
       });
     }
 
-    if (existingJackpot) {
+    if (jackpot) {
       const { error: jackpotUpdateError } = await db
         .from("weekly_jackpots")
         .update({
-          total_lamports: Number(existingJackpot.total_lamports || 0) + jackpotLamports,
-          entry_count: Number(existingJackpot.entry_count || 0) + 1,
+          total_lamports: Number(jackpot.total_lamports || 0) + jackpotAdd,
+          entry_count: Number(jackpot.entry_count || 0) + 1,
           updated_at: new Date().toISOString()
         })
         .eq("week_key", weekKey);
@@ -246,7 +218,7 @@ export default async function handler(req, res) {
         .from("weekly_jackpots")
         .insert({
           week_key: weekKey,
-          total_lamports: jackpotLamports,
+          total_lamports: jackpotAdd,
           entry_count: 1,
           status: "open",
           updated_at: new Date().toISOString()
@@ -262,10 +234,11 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       ok: true,
-      pass_until: passUntil
+      pass_until: passUntil,
+      recovered: true
     });
-
   } catch (e) {
+    console.error("recover-payment fatal", e);
     return res.status(500).json({
       ok: false,
       error: String(e?.message || e)
