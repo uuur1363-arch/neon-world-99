@@ -442,11 +442,11 @@
         let url = "";
 
         if (currentBoardType === "global") {
-          url = `/api/global-leaderboard?scope=${encodeURIComponent(currentScope)}`;
+          url = `/api/leaderboards?type=global&scope=${encodeURIComponent(currentScope)}`;
         } else if (currentBoardType === "country") {
-          url = "/api/country-leaderboard";
+          url = `/api/leaderboards?type=country&scope=all`;
         } else {
-          url = "/api/city-leaderboard";
+          url = `/api/leaderboards?type=city&scope=all`;
         }
 
         const r = await fetch(url);
