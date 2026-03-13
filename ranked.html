@@ -103,7 +103,7 @@
     }
 
     #log{
-      min-height:180px;
+      min-height:200px;
       white-space:pre-wrap;
     }
   </style>
@@ -204,16 +204,10 @@
 
     async function getWorkingConnection() {
       const url = window.location.origin + "/api/solana-rpc";
-
-      try {
-        const conn = new solanaWeb3.Connection(url, "confirmed");
-        await conn.getLatestBlockhash("finalized");
-        logLine("Using RPC: " + url);
-        return conn;
-      } catch (e) {
-        logLine("RPC failed: " + url + " => " + String(e.message || e));
-        throw e;
-      }
+      const conn = new solanaWeb3.Connection(url, "confirmed");
+      await conn.getLatestBlockhash("finalized");
+      logLine("Using RPC: " + url);
+      return conn;
     }
 
     async function connectPhantom() {
@@ -238,9 +232,11 @@
 
     async function refreshPassStatus() {
       const wallet = getWallet();
+      const localPassUntil = getPassUntil();
+
       if (!wallet) {
-        updatePassUI(0);
-        return;
+        updatePassUI(localPassUntil);
+        return localPassUntil;
       }
 
       try {
@@ -248,16 +244,62 @@
         const j = await r.json();
 
         if (r.ok && j.ok) {
-          const passUntil = Number(j.pass_until || 0);
-          setPassUntil(passUntil);
-          updatePassUI(passUntil);
-          return;
+          const serverPassUntil = Number(j.pass_until || 0);
+          const finalPassUntil = Math.max(localPassUntil, serverPassUntil);
+          setPassUntil(finalPassUntil);
+          updatePassUI(finalPassUntil);
+          return finalPassUntil;
         }
       } catch (e) {
         logLine("Pass status fetch failed: " + String(e.message || e));
       }
 
-      updatePassUI(getPassUntil());
+      updatePassUI(localPassUntil);
+      return localPassUntil;
+    }
+
+    async function verifyOrRecoverPayment(wallet, signature) {
+      let lastError = "Payment verification failed";
+
+      try {
+        logLine("Verifying payment on backend...");
+        const verifyResp = await fetch("/api/verify-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ wallet, signature })
+        });
+
+        const verifyJson = await verifyResp.json().catch(() => ({}));
+        if (verifyResp.ok && verifyJson.ok) {
+          return verifyJson;
+        }
+        lastError = verifyJson.error || lastError;
+        logLine("Verify failed: " + lastError);
+      } catch (e) {
+        lastError = String(e.message || e);
+        logLine("Verify request failed: " + lastError);
+      }
+
+      try {
+        logLine("Trying recovery...");
+        const recoverResp = await fetch("/api/recover-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ wallet, signature })
+        });
+
+        const recoverJson = await recoverResp.json().catch(() => ({}));
+        if (recoverResp.ok && recoverJson.ok) {
+          return recoverJson;
+        }
+        lastError = recoverJson.error || lastError;
+        logLine("Recovery failed: " + lastError);
+      } catch (e) {
+        lastError = String(e.message || e);
+        logLine("Recovery request failed: " + lastError);
+      }
+
+      throw new Error(lastError);
     }
 
     async function unlockRanked() {
@@ -267,6 +309,14 @@
         if (!wallet) {
           wallet = await connectPhantom();
           if (!wallet) return;
+        }
+
+        const currentPass = await refreshPassStatus();
+        if (Number(currentPass || 0) > Date.now()) {
+          setMode("ranked");
+          logLine("Pass already active, no payment needed");
+          alert("Ranked access is already active");
+          return;
         }
 
         logLine("Preparing payment transaction...");
@@ -287,24 +337,12 @@
           return;
         }
 
-        const memo = `neon99:${wallet}:${Date.now()}`;
-
         const tx = new solanaWeb3.Transaction();
-
         tx.add(
           solanaWeb3.SystemProgram.transfer({
             fromPubkey: new solanaWeb3.PublicKey(wallet),
             toPubkey: new solanaWeb3.PublicKey(treasuryWallet),
             lamports: ENTRY_LAMPORTS
-          })
-        );
-
-        const memoProgramId = new solanaWeb3.PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr");
-        tx.add(
-          new solanaWeb3.TransactionInstruction({
-            keys: [],
-            programId: memoProgramId,
-            data: new TextEncoder().encode(memo)
           })
         );
 
@@ -323,60 +361,24 @@
           maxRetries: 5
         });
 
+        logLine("Transaction sent: " + signature);
         logLine("Waiting confirmation...");
-        await connection.confirmTransaction(signature, "confirmed");
-
-        logLine("Verifying payment on backend...");
-
-        let verifyJson = {};
-        let verified = false;
 
         try {
-          const verifyResp = await fetch("/api/verify-payment", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              wallet,
-              signature,
-              memo
-            })
-          });
-
-          verifyJson = await verifyResp.json().catch(() => ({}));
-          verified = !!(verifyResp.ok && verifyJson.ok);
+          await connection.confirmTransaction(signature, "confirmed");
+          logLine("Transaction confirmed");
         } catch (e) {
-          logLine("Verify request failed: " + String(e.message || e));
+          logLine("Confirmation timeout, continuing with verify/recovery...");
+          logLine(String(e.message || e));
         }
 
-        if (!verified) {
-          logLine("Verify failed, trying recovery...");
+        const paymentJson = await verifyOrRecoverPayment(wallet, signature);
+        const passUntil = Number(paymentJson.pass_until || 0);
 
-          try {
-            const recoverResp = await fetch("/api/recover-payment", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json"
-              },
-              body: JSON.stringify({
-                wallet,
-                signature
-              })
-            });
-
-            verifyJson = await recoverResp.json().catch(() => ({}));
-            verified = !!(recoverResp.ok && verifyJson.ok);
-          } catch (e) {
-            logLine("Recovery request failed: " + String(e.message || e));
-          }
+        if (!passUntil) {
+          throw new Error("Pass was not written");
         }
 
-        if (!verified) {
-          throw new Error(verifyJson.error || "Payment verification failed");
-        }
-
-        const passUntil = Number(verifyJson.pass_until || 0);
         setPassUntil(passUntil);
         setMode("ranked");
         updatePassUI(passUntil);
@@ -390,13 +392,9 @@
     }
 
     async function continueToCities() {
-      const wallet = getWallet();
+      const passUntil = await refreshPassStatus();
 
-      if (wallet) {
-        await refreshPassStatus();
-      }
-
-      if (getPassUntil() > Date.now()) {
+      if (Number(passUntil || 0) > Date.now()) {
         setMode("ranked");
       } else {
         setMode("free");
