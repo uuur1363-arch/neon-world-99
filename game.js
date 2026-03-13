@@ -76,25 +76,17 @@ const CITY_BGM = {
   let lastTouchEnd = 0;
 
   document.addEventListener("touchstart", function (e) {
-    if (e.touches && e.touches.length > 1) {
-      e.preventDefault();
-    }
+    if (e.touches && e.touches.length > 1) e.preventDefault();
   }, { passive: false });
 
   document.addEventListener("touchmove", function (e) {
-    if (e.touches && e.touches.length > 1) {
-      e.preventDefault();
-    }
-    if (typeof e.scale === "number" && e.scale !== 1) {
-      e.preventDefault();
-    }
+    if (e.touches && e.touches.length > 1) e.preventDefault();
+    if (typeof e.scale === "number" && e.scale !== 1) e.preventDefault();
   }, { passive: false });
 
   document.addEventListener("touchend", function (e) {
     const now = Date.now();
-    if (now - lastTouchEnd <= 350) {
-      e.preventDefault();
-    }
+    if (now - lastTouchEnd <= 350) e.preventDefault();
     lastTouchEnd = now;
   }, { passive: false });
 
@@ -143,9 +135,7 @@ function loadCityScores() {
 function saveCityScore(city, score) {
   try {
     const data = loadCityScores();
-    if (!data[city] || score > data[city]) {
-      data[city] = score;
-    }
+    if (!data[city] || score > data[city]) data[city] = score;
     localStorage.setItem("neon99_city_scores", JSON.stringify(data));
   } catch {}
 }
@@ -217,9 +207,7 @@ function cityUnlocked(city) {
   if (index <= 0) return false;
 
   const prev = CITY_ORDER[index - 1];
-  const prevScore = getCityScore(prev);
-
-  return prevScore >= CITY_REQUIRE[city];
+  return getCityScore(prev) >= CITY_REQUIRE[city];
 }
 
 function getAccent(city) {
@@ -235,15 +223,13 @@ function getMusic(city) {
 }
 
 function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (m) => {
-    return {
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#39;"
-    }[m];
-  });
+  return String(s).replace(/[&<>"']/g, (m) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[m]));
 }
 
 function shortWallet(w) {
@@ -268,23 +254,15 @@ async function detectGeoInfo() {
   const existingCity = String(getCityRegion() || "").trim();
 
   if (existingCountry && existingCountry !== "unknown" && existingCity && existingCity !== "unknown") {
-    return {
-      country: existingCountry,
-      city: existingCity
-    };
+    return { country: existingCountry, city: existingCity };
   }
 
   try {
-    const r = await fetch("https://ipapi.co/json/", {
-      method: "GET"
-    });
-
+    const r = await fetch("https://ipapi.co/json/");
     const j = await r.json();
 
-    const country =
-      String(j.country_code || j.country || j.country_name || "unknown").trim() || "unknown";
-    const city =
-      String(j.city || "unknown").trim() || "unknown";
+    const country = String(j.country_code || j.country || j.country_name || "unknown").trim() || "unknown";
+    const city = String(j.city || "unknown").trim() || "unknown";
 
     setCountry(country);
     setCityRegion(city);
@@ -323,12 +301,7 @@ function startMusicGesture(city) {
     bgm.volume = 0.38;
     const p = bgm.play();
     bgmStarted = true;
-
-    if (p && p.catch) {
-      p.catch(() => {
-        bgmStarted = false;
-      });
-    }
+    if (p && p.catch) p.catch(() => { bgmStarted = false; });
   } catch {
     bgmStarted = false;
   }
@@ -342,7 +315,7 @@ async function fetchRankedPassFromServer() {
     return {
       ok: false,
       pass: false,
-      pass_until: 0
+      pass_until: getLocalPassUntil()
     };
   }
 
@@ -359,31 +332,37 @@ async function fetchRankedPassFromServer() {
     throw new Error(data.error || "Failed to check ranked pass");
   }
 
-  const passUntil = Number(data.pass_until || 0);
-  setLocalPassUntil(passUntil);
+  const serverPassUntil = Number(data.pass_until || 0);
+  const localPassUntil = getLocalPassUntil();
+  const finalPassUntil = Math.max(serverPassUntil, localPassUntil);
+
+  setLocalPassUntil(finalPassUntil);
 
   return {
-    ok: !!data.ok,
-    pass: !!data.pass,
-    pass_until: passUntil
+    ok: true,
+    pass: finalPassUntil > Date.now(),
+    pass_until: finalPassUntil
   };
 }
 
 async function ensureRankedAccess() {
   if (getMode() !== "ranked") return true;
 
+  const localPassUntil = getLocalPassUntil();
+  if (localPassUntil > Date.now()) return true;
+
   const wallet = getWallet();
   if (!wallet) return false;
 
   try {
     const passInfo = await fetchRankedPassFromServer();
-    return !!(passInfo.ok && passInfo.pass && Date.now() < Number(passInfo.pass_until || 0));
+    return Number(passInfo.pass_until || 0) > Date.now();
   } catch {
-    return Date.now() < getLocalPassUntil();
+    return Number(getLocalPassUntil() || 0) > Date.now();
   }
 }
 
-// ---------------- ANTI-CHEAT ----------------
+// ---------------- RUN TOKEN ----------------
 let currentRunToken = "";
 let currentRunSeed = "";
 let runStartedAt = 0;
@@ -433,10 +412,7 @@ async function fetchWeeklyShareData() {
     const j = await r.json();
 
     if (!r.ok || !j.ok) {
-      return {
-        jackpot: "live jackpot",
-        leader: "current leader"
-      };
+      return { jackpot: "live jackpot", leader: "current leader" };
     }
 
     return {
@@ -444,10 +420,7 @@ async function fetchWeeklyShareData() {
       leader: `${shortWallet(j.leader_wallet || "")} / ${Number(j.leader_score || 0)}`
     };
   } catch {
-    return {
-      jackpot: "live jackpot",
-      leader: "current leader"
-    };
+    return { jackpot: "live jackpot", leader: "current leader" };
   }
 }
 
@@ -474,10 +447,7 @@ async function shareScore(finalScore) {
 
   if (navigator.share) {
     try {
-      await navigator.share({
-        title: "Neon World '99",
-        text
-      });
+      await navigator.share({ title: "Neon World '99", text });
       return;
     } catch {}
   }
@@ -486,7 +456,7 @@ async function shareScore(finalScore) {
   location.href = xUrl;
 }
 
-// ---------------- GAME BOOT ----------------
+// ---------------- BOOT ----------------
 async function bootGame() {
   const app = document.getElementById("app");
   if (!app) return;
@@ -609,17 +579,12 @@ function runGame() {
   let lastTouchEnd = 0;
   cv.addEventListener("touchend", (e) => {
     const now = Date.now();
-    if (now - lastTouchEnd <= 350) {
-      e.preventDefault();
-    }
+    if (now - lastTouchEnd <= 350) e.preventDefault();
     lastTouchEnd = now;
   }, { passive: false });
 
   function spawn() {
-    notes.push({
-      y: -20,
-      speed: diff.note
-    });
+    notes.push({ y: -20, speed: diff.note });
   }
 
   function hit(e) {
@@ -863,7 +828,6 @@ function showEndScreen(finalScore, submitState = "UNKNOWN") {
   };
 }
 
-// ---------------- BOOT ----------------
 if (document.getElementById("app")) {
   bootGame();
 }
