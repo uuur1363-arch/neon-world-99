@@ -59,6 +59,89 @@ async function logSuspiciousRun(db, { runToken, wallet, reason, rawPayload }) {
   } catch {}
 }
 
+async function tryAutoClaimChallenge(db, {
+  challengeId,
+  wallet,
+  score,
+  city,
+  weekKey,
+  verified
+}) {
+  if (!verified) {
+    return { claimed: false, reason: "score not verified" };
+  }
+
+  const id = String(challengeId || "").trim();
+  if (!id) {
+    return { claimed: false, reason: "no active challenge" };
+  }
+
+  const { data: challenge, error: challengeReadError } = await db
+    .from("challenges")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (challengeReadError) {
+    return {
+      claimed: false,
+      error: challengeReadError.message || "Failed to read challenge"
+    };
+  }
+
+  if (!challenge) {
+    return { claimed: false, reason: "challenge not found" };
+  }
+
+  if (String(challenge.status || "") !== "open") {
+    return { claimed: false, reason: "challenge not open" };
+  }
+
+  if (String(challenge.creator_wallet || "") === wallet) {
+    return { claimed: false, reason: "creator cannot claim own challenge" };
+  }
+
+  if (String(challenge.city || "").trim() !== String(city || "").trim()) {
+    return { claimed: false, reason: "challenge city mismatch" };
+  }
+
+  const targetScore = Number(challenge.score_to_beat || 0);
+  if (Number(score || 0) <= targetScore) {
+    return { claimed: false, reason: "score not high enough" };
+  }
+
+  const claimedAt = nowMs();
+
+  const { data: updated, error: updateError } = await db
+    .from("challenges")
+    .update({
+      status: "claimed",
+      winner_wallet: wallet,
+      winning_score: Number(score || 0),
+      claimed_at: claimedAt,
+      week_key: String(challenge.week_key || weekKey || "")
+    })
+    .eq("id", id)
+    .eq("status", "open")
+    .select("id, status, creator_wallet, winner_wallet, winning_score, city, country, score_to_beat, claimed_at, week_key");
+
+  if (updateError) {
+    return {
+      claimed: false,
+      error: updateError.message || "Failed to claim challenge"
+    };
+  }
+
+  if (!updated || updated.length === 0) {
+    return { claimed: false, reason: "challenge already claimed" };
+  }
+
+  return {
+    claimed: true,
+    challenge: updated[0]
+  };
+}
+
 export default async function handler(req, res) {
   try {
     if (req.method !== "POST") {
@@ -80,6 +163,7 @@ export default async function handler(req, res) {
     const body = req.body || {};
     const wallet = String(body.wallet || "").trim();
     const runToken = String(body.run_token || "").trim();
+    const activeChallengeId = String(body.challenge_id || "").trim();
     const score = Number(body.score);
     const city = normalizeCity(body.city);
     const country = normalizeCountry(body.country);
@@ -394,13 +478,39 @@ export default async function handler(req, res) {
       }
     }
 
+    // ---------------- AUTO CLAIM CHALLENGE ----------------
+    let challengeClaim = {
+      claimed: false,
+      reason: "no challenge"
+    };
+
+    if (activeChallengeId) {
+      challengeClaim = await tryAutoClaimChallenge(db, {
+        challengeId: activeChallengeId,
+        wallet,
+        score,
+        city,
+        weekKey,
+        verified
+      });
+
+      if (challengeClaim.error) {
+        return res.status(500).json({
+          ok: false,
+          error: challengeClaim.error
+        });
+      }
+    }
+
     return res.status(200).json({
       ok: true,
       best,
       mode,
       verified,
       country,
-      city
+      city,
+      challenge_claimed: !!challengeClaim.claimed,
+      challenge: challengeClaim.challenge || null
     });
   } catch (e) {
     return res.status(500).json({
