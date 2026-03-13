@@ -376,7 +376,7 @@ let runStartedAt = 0;
 
 // ---------------- GLOBALS ----------------
 let currentCity = localStorage.getItem("neon99_city") || "";
-let bestScore = loadBest();
+let bestScore = 0;
 
 // ---------------- CHALLENGE STATE ----------------
 let lastCreatedChallengeUrl = "";
@@ -582,6 +582,7 @@ async function bootGame() {
     return;
   }
 
+  bestScore = getCityScore(currentCity);
   startGame();
 }
 
@@ -702,7 +703,6 @@ function runGame() {
     }
 
     if (bestIndex >= 0 && bestDistance <= HIT_WINDOW) {
-      const note = notes[bestIndex];
       notes.splice(bestIndex, 1);
 
       combo++;
@@ -852,9 +852,8 @@ function runGame() {
 async function endGame(finalScore, stats = {}) {
   stopMusic();
 
-  bestScore = Math.max(loadBest(), finalScore);
-  saveBest(bestScore);
   saveCityScore(currentCity, finalScore);
+  bestScore = getCityScore(currentCity);
   lastFinalScore = finalScore;
   lastCreatedChallengeUrl = "";
 
@@ -932,7 +931,6 @@ function showEndScreen(finalScore, submitState = "UNKNOWN") {
         <div>SCORE: <b>${finalScore}</b></div>
         <div>${modeLine}</div>
         <div>CITY BEST: <b>${getCityScore(currentCity)}</b></div>
-        <div>GLOBAL BEST: <b>${bestScore}</b></div>
         <div style="margin-top:8px;font-size:12px;color:#aaa">${nextText}</div>
       </div>
 
