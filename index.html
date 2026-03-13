@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta charset="UTF-8">
   <title>NEON WORLD '99</title>
   <style>
     body{
@@ -88,6 +89,21 @@
       flex:0 0 auto;
     }
 
+    .ctaBig{
+      font-size:18px;
+      color:#fff;
+      margin-bottom:6px;
+    }
+
+    .row{
+      display:flex;
+      gap:10px;
+      justify-content:center;
+      flex-wrap:wrap;
+      max-width:430px;
+      margin:0 auto;
+    }
+
     button{
       width:100%;
       max-width:430px;
@@ -109,12 +125,36 @@
       border:1px solid #444;
     }
 
+    .row button{
+      flex:1 1 180px;
+      max-width:none;
+    }
+
     .mini{
       margin-top:18px;
       color:rgba(255,255,255,.55);
       font-size:12px;
       line-height:1.5;
+      max-width:430px;
+      margin-left:auto;
+      margin-right:auto;
     }
+
+    .ticker{
+      margin:0 auto 14px;
+      max-width:430px;
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:12px;
+      background:rgba(255,255,255,.03);
+      padding:12px 14px;
+      font-size:12px;
+      color:#cfcfcf;
+      line-height:1.6;
+    }
+
+    .green{ color:#00ff9c; }
+    .pink{ color:#ff2d6b; }
+    .blue{ color:#00d4ff; }
   </style>
 </head>
 <body>
@@ -123,7 +163,11 @@
   <h1>NEON WORLD '99</h1>
 
   <div class="sub">
-    Compete. Climb. Unlock cities. Win the weekly jackpot.
+    Compete globally. Unlock cities. Enter ranked. Chase the weekly jackpot.
+  </div>
+
+  <div class="ticker" id="ticker">
+    <span class="blue">LIVE</span> Loading weekly stats...
   </div>
 
   <div class="panel">
@@ -133,20 +177,31 @@
   </div>
 
   <div class="panel">
+    <div class="label">CURRENT #1 PLAYER</div>
+    <div class="ctaBig" id="topPlayer">Loading...</div>
+    <div class="leader" id="topMeta">Loading...</div>
+  </div>
+
+  <div class="panel">
     <div class="label">RANKED MODE</div>
-    <div style="font-size:18px;color:#fff;margin-bottom:6px;">0.01 SOL entry</div>
+    <div class="ctaBig">0.01 SOL ENTRY</div>
     <div class="leader">
       Beat the leader. Climb the board. Chase the weekly prize.
     </div>
   </div>
 
   <button onclick="startFree()">START FREE MODE</button>
-  <button onclick="startRanked()">RANKED MODE</button>
-  <button class="secondary" onclick="location.href='/board.html'">LEADERBOARD</button>
+  <button onclick="startRanked()">ENTER RANKED MODE</button>
+
+  <div class="row">
+    <button class="secondary" onclick="location.href='/board.html'">LEADERBOARD</button>
+    <button class="secondary" onclick="location.href='/ranked.html'">RANKED ACCESS</button>
+  </div>
 
   <div class="mini">
     Free mode unlocks cities.<br>
-    Ranked mode turns your runs into competition.
+    Ranked mode turns your runs into real competition.<br>
+    Highest verified weekly score wins the jackpot.
   </div>
 
   <script>
@@ -158,7 +213,7 @@
     }
 
     function flagUrl(country) {
-      if (!country) return "/flag_us.PNG";
+      if (!country || country === "unknown") return "/flag_us.PNG";
       return "/flag_" + String(country).toLowerCase() + ".PNG";
     }
 
@@ -190,16 +245,22 @@
         if (!r.ok || !j.ok) {
           document.getElementById("jackpot").textContent = "unavailable";
           document.getElementById("leader").textContent = "Could not load weekly stats";
+          document.getElementById("topPlayer").textContent = "Unavailable";
+          document.getElementById("topMeta").textContent = "Could not load current leader";
+          document.getElementById("ticker").innerHTML =
+            `<span class="pink">LIVE</span> Weekly stats unavailable`;
           return;
         }
 
-        document.getElementById("jackpot").textContent =
-          `${Number(j.jackpot_sol || 0).toFixed(3)} SOL`;
-
+        const jackpotSol = Number(j.jackpot_sol || 0).toFixed(3);
         const leaderWallet = j.leader_wallet ? shortWallet(j.leader_wallet) : "No leader yet";
         const leaderScore = Number(j.leader_score || 0);
         const leaderCity = j.leader_city || "—";
         const leaderCountry = j.leader_country || "";
+        const entryCount = Number(j.entry_count || 0);
+        const weekKey = String(j.week_key || "");
+
+        document.getElementById("jackpot").textContent = `${jackpotSol} SOL`;
 
         document.getElementById("leader").innerHTML = `
           <div class="leaderRow">
@@ -207,10 +268,29 @@
             <span>Leader: ${leaderWallet}</span>
           </div>
           <div>Score: ${leaderScore} | City: ${leaderCity}</div>
+          <div>${entryCount} ranked entries • ${weekKey}</div>
+        `;
+
+        document.getElementById("topPlayer").innerHTML = `
+          ${flagImg(leaderCountry, leaderCountry)} ${leaderWallet}
+        `;
+
+        document.getElementById("topMeta").textContent =
+          `Score ${leaderScore} • ${leaderCity} • ${weekKey}`;
+
+        document.getElementById("ticker").innerHTML = `
+          <span class="blue">LIVE</span>
+          Weekly jackpot <span class="green">${jackpotSol} SOL</span> •
+          Leader <span class="pink">${leaderWallet}</span> •
+          ${leaderScore} pts
         `;
       } catch {
         document.getElementById("jackpot").textContent = "unavailable";
         document.getElementById("leader").textContent = "Could not load weekly stats";
+        document.getElementById("topPlayer").textContent = "Unavailable";
+        document.getElementById("topMeta").textContent = "Could not load current leader";
+        document.getElementById("ticker").innerHTML =
+          `<span class="pink">LIVE</span> Weekly stats unavailable`;
       }
     }
 
