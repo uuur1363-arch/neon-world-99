@@ -48,7 +48,6 @@ export default async function handler(req, res) {
       best_score: bestScore,
       created_at: Number(user?.created_at || 0)
     });
-
   } catch (e) {
     return res.status(500).json({
       ok: false,
