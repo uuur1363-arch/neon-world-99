@@ -66,6 +66,16 @@
       box-shadow:0 0 0 1px rgba(255,255,255,.03) inset;
     }
 
+    .leaderPanel{
+      margin:0 auto 14px;
+      max-width:560px;
+      border:1px solid rgba(255,209,102,.28);
+      border-radius:16px;
+      padding:18px 16px;
+      background:rgba(255,209,102,.06);
+      box-shadow:0 0 0 1px rgba(255,209,102,.08) inset;
+    }
+
     .label{
       font-size:12px;
       color:#aaa;
@@ -78,10 +88,32 @@
       margin-bottom:6px;
     }
 
+    .heroBig{
+      font-size:26px;
+      color:#ffd166;
+      margin-bottom:8px;
+      font-weight:bold;
+    }
+
     .muted{
       font-size:12px;
       color:#888;
       line-height:1.5;
+    }
+
+    .leaderMeta{
+      font-size:13px;
+      color:#ddd;
+      line-height:1.7;
+    }
+
+    .leaderRow{
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:4px;
     }
 
     .tabs{
@@ -225,6 +257,12 @@
     <button class="smallBtn" onclick="location.href='/ranked.html'">RANKED</button>
   </div>
 
+  <div class="leaderPanel">
+    <div class="label">👑 WEEKLY LEADER</div>
+    <div class="heroBig" id="leaderScoreHero">Loading...</div>
+    <div class="leaderMeta" id="leaderHeroMeta">Loading weekly leader...</div>
+  </div>
+
   <div class="panel">
     <div class="label">CURRENT WEEKLY JACKPOT</div>
     <div class="big" id="jackpotText">Loading...</div>
@@ -313,22 +351,40 @@
         if (!r.ok || !j.ok) {
           document.getElementById("jackpotText").textContent = "Unavailable";
           document.getElementById("jackpotMeta").textContent = "Could not load weekly stats";
+          document.getElementById("leaderScoreHero").textContent = "Unavailable";
+          document.getElementById("leaderHeroMeta").textContent = "Could not load weekly leader";
           return;
         }
 
-        document.getElementById("jackpotText").textContent =
-          `${Number(j.jackpot_sol || 0).toFixed(3)} SOL`;
-
-        const leaderFlag = j.leader_country ? flagImg(j.leader_country, j.leader_country) + " " : "";
+        const jackpotSol = Number(j.jackpot_sol || 0).toFixed(3);
         const leaderWallet = j.leader_wallet ? shortWallet(j.leader_wallet) : "No leader yet";
         const leaderScore = Number(j.leader_score || 0);
+        const leaderCity = String(j.leader_city || "—");
+        const leaderCountry = String(j.leader_country || "");
+        const weekKey = String(j.week_key || "");
+
+        document.getElementById("jackpotText").textContent = `${jackpotSol} SOL`;
+
+        const leaderFlag = leaderCountry ? flagImg(leaderCountry, leaderCountry) + " " : "";
 
         document.getElementById("jackpotMeta").innerHTML =
-          `${Number(j.entry_count || 0)} ranked entries • ${escapeHtml(String(j.week_key || ""))}<br>` +
+          `${Number(j.entry_count || 0)} ranked entries • ${escapeHtml(weekKey)}<br>` +
           `Leader: ${leaderFlag}${escapeHtml(leaderWallet)} • ${leaderScore} pts`;
+
+        document.getElementById("leaderScoreHero").textContent =
+          leaderScore > 0 ? `${leaderScore} PTS` : "NO LEADER YET";
+
+        document.getElementById("leaderHeroMeta").innerHTML =
+          leaderScore > 0
+            ? `<div class="leaderRow">${leaderFlag}<span>${escapeHtml(leaderWallet)}</span></div>` +
+              `<div>${escapeHtml(leaderCity)} • ${escapeHtml(leaderCountry || "—")} • ${escapeHtml(weekKey)}</div>` +
+              `<div>Jackpot: ${jackpotSol} SOL</div>`
+            : `No verified ranked score yet for ${escapeHtml(weekKey)}.`;
       } catch {
         document.getElementById("jackpotText").textContent = "Unavailable";
         document.getElementById("jackpotMeta").textContent = "Could not load weekly stats";
+        document.getElementById("leaderScoreHero").textContent = "Unavailable";
+        document.getElementById("leaderHeroMeta").textContent = "Could not load weekly leader";
       }
     }
 
