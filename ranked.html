@@ -72,7 +72,7 @@
       margin:18px 0;
     }
 
-    button{
+    button, a.linkBtn{
       width:100%;
       padding:18px 16px;
       border:none;
@@ -81,6 +81,10 @@
       font-size:16px;
       font-weight:bold;
       -webkit-tap-highlight-color:transparent;
+      box-sizing:border-box;
+      text-decoration:none;
+      display:block;
+      text-align:center;
     }
 
     .primary{
@@ -94,6 +98,11 @@
       border:1px solid #333;
     }
 
+    .phantom{
+      background:#6c47ff;
+      color:#fff;
+    }
+
     .status-ok{
       color:#7dff8a;
     }
@@ -103,8 +112,23 @@
     }
 
     #log{
-      min-height:200px;
+      min-height:180px;
       white-space:pre-wrap;
+    }
+
+    .miniBox{
+      margin-top:10px;
+      border:1px solid rgba(108,71,255,.28);
+      border-radius:14px;
+      background:rgba(108,71,255,.08);
+      padding:14px;
+    }
+
+    .miniTitle{
+      font-size:13px;
+      color:#cdbfff;
+      margin-bottom:6px;
+      font-weight:bold;
     }
   </style>
 </head>
@@ -125,24 +149,33 @@
     </div>
 
     <div class="card">
-      <div class="label">How it works</div>
+      <div class="label">How Ranked Works</div>
       <div class="value" style="font-size:15px; line-height:1.8;">
-        1. Connect your Phantom wallet<br>
-        2. Pay 0.01 SOL to unlock ranked for 24 hours<br>
-        3. Enter ranked mode and compete in weekly leaderboard<br>
-        4. Highest verified score wins the weekly jackpot
+        1. Open the game in Phantom wallet browser<br>
+        2. Connect your Phantom wallet<br>
+        3. Pay 0.01 SOL to unlock ranked for 24 hours<br>
+        4. Enter ranked mode and compete for the weekly jackpot
+      </div>
+
+      <div class="miniBox">
+        <div class="miniTitle">Phantom Required</div>
+        <div class="muted">
+          Ranked mode requires Phantom wallet.<br>
+          If wallet connection does not appear, open this page in Phantom browser.
+        </div>
       </div>
     </div>
 
     <div class="actions">
+      <a id="phantomOpenBtn" class="linkBtn phantom" href="#">OPEN IN PHANTOM</a>
       <button id="connectBtn" class="secondary">CONNECT PHANTOM</button>
       <button id="unlockBtn" class="primary">UNLOCK RANKED (0.01 SOL)</button>
       <button id="continueBtn" class="secondary">CONTINUE TO CITIES</button>
     </div>
 
     <div class="card">
-      <div class="label">System Log</div>
-      <div id="log" class="muted">Preparing payment flow...</div>
+      <div class="label">System Status</div>
+      <div id="log" class="muted">Preparing ranked access...</div>
     </div>
   </div>
 
@@ -202,29 +235,39 @@
       }
     }
 
+    function setPhantomDeepLink() {
+      const currentUrl = window.location.origin + "/ranked.html";
+      const encodedTarget = encodeURIComponent(currentUrl);
+      const encodedRef = encodeURIComponent(window.location.origin);
+      const deepLink = `https://phantom.app/ul/browse/${encodedTarget}?ref=${encodedRef}`;
+      document.getElementById("phantomOpenBtn").href = deepLink;
+    }
+
     async function getWorkingConnection() {
       const url = window.location.origin + "/api/solana-rpc";
       const conn = new solanaWeb3.Connection(url, "confirmed");
       await conn.getLatestBlockhash("finalized");
-      logLine("Using RPC: " + url);
+      logLine("Server RPC ready");
       return conn;
     }
 
     async function connectPhantom() {
       try {
         if (!window.solana || !window.solana.isPhantom) {
-          alert("Phantom wallet not found.");
+          alert("Phantom wallet not found.\nUse OPEN IN PHANTOM first.");
+          logLine("Phantom wallet not detected");
           return null;
         }
 
+        logLine("Connecting wallet...");
         const resp = await window.solana.connect();
         const wallet = resp.publicKey.toString();
         setWallet(wallet);
-        logLine("Wallet connected: " + wallet);
+        logLine("Wallet connected");
         await refreshPassStatus();
         return wallet;
       } catch (e) {
-        logLine("Wallet connect failed: " + String(e.message || e));
+        logLine("Wallet connection failed");
         alert("Wallet connection failed");
         return null;
       }
@@ -251,7 +294,7 @@
           return finalPassUntil;
         }
       } catch (e) {
-        logLine("Pass status fetch failed: " + String(e.message || e));
+        logLine("Could not refresh pass status");
       }
 
       updatePassUI(localPassUntil);
@@ -306,6 +349,12 @@
       try {
         let wallet = getWallet();
 
+        if (!window.solana || !window.solana.isPhantom) {
+          alert("Phantom wallet required.\nUse OPEN IN PHANTOM first.");
+          logLine("Cannot unlock without Phantom");
+          return;
+        }
+
         if (!wallet) {
           wallet = await connectPhantom();
           if (!wallet) return;
@@ -319,7 +368,7 @@
           return;
         }
 
-        logLine("Preparing payment transaction...");
+        logLine("Preparing transaction...");
         const connection = await getWorkingConnection();
 
         const treasuryResp = await fetch("/api/config", { method: "GET" }).catch(() => null);
@@ -334,6 +383,7 @@
 
         if (!treasuryWallet) {
           alert("Treasury config missing");
+          logLine("Treasury config missing");
           return;
         }
 
@@ -352,24 +402,23 @@
         tx.recentBlockhash = latest.blockhash;
         tx.lastValidBlockHeight = latest.lastValidBlockHeight;
 
-        logLine("Requesting Phantom signature...");
+        logLine("Waiting for Phantom signature...");
         const signed = await window.solana.signTransaction(tx);
 
-        logLine("Sending transaction...");
+        logLine("Sending payment...");
         const signature = await connection.sendRawTransaction(signed.serialize(), {
           skipPreflight: true,
           maxRetries: 5
         });
 
-        logLine("Transaction sent: " + signature);
-        logLine("Waiting confirmation...");
+        logLine("Transaction sent");
+        logLine("Confirming payment...");
 
         try {
           await connection.confirmTransaction(signature, "confirmed");
           logLine("Transaction confirmed");
         } catch (e) {
-          logLine("Confirmation timeout, continuing with verify/recovery...");
-          logLine(String(e.message || e));
+          logLine("Confirmation delayed, continuing with verify/recovery...");
         }
 
         const paymentJson = await verifyOrRecoverPayment(wallet, signature);
@@ -383,7 +432,7 @@
         setMode("ranked");
         updatePassUI(passUntil);
 
-        logLine("Ranked unlocked successfully");
+        logLine("Ranked unlocked");
         alert("Ranked unlocked successfully");
       } catch (e) {
         logLine("Unlock failed: " + String(e.message || e));
@@ -404,7 +453,8 @@
     }
 
     async function init() {
-      document.getElementById("log").textContent = "Preparing payment flow...";
+      document.getElementById("log").textContent = "Preparing ranked access...";
+      setPhantomDeepLink();
       updatePassUI(getPassUntil());
 
       const existingWallet = getWallet();
@@ -416,14 +466,15 @@
       }
 
       try {
-        const testConn = new solanaWeb3.Connection(
-          window.location.origin + "/api/solana-rpc",
-          "confirmed"
-        );
-        await testConn.getLatestBlockhash("finalized");
-        logLine("Server RPC ready");
+        await getWorkingConnection();
       } catch (e) {
-        logLine("Server RPC failed: " + String(e.message || e));
+        logLine("Server RPC unavailable");
+      }
+
+      if (!window.solana || !window.solana.isPhantom) {
+        logLine("Tip: open this page inside Phantom browser for ranked mode");
+      } else {
+        logLine("Phantom detected");
       }
     }
 
