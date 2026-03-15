@@ -19,15 +19,15 @@ const CITY_ORDER = [
 
 const CITY_REQUIRE = {
   "New York": 0,
-  "Tokyo": 500,
-  "Berlin": 700,
-  "Rio": 900,
-  "Seoul": 1100,
-  "London": 1300,
-  "Paris": 1500,
-  "Dubai": 1800,
-  "Singapore": 2100,
-  "Istanbul": 2500
+  "Tokyo": 1500,
+  "Berlin": 2500,
+  "Rio": 4000,
+  "Seoul": 6000,
+  "London": 8500,
+  "Paris": 11000,
+  "Dubai": 14000,
+  "Singapore": 18000,
+  "Istanbul": 23000
 };
 
 // ---------------- DIFFICULTY ----------------
@@ -484,7 +484,8 @@ async function buildChallengeShareText(challengeUrl, finalScore) {
     `Score to beat: ${finalScore}`,
     `Stage: ${currentCity}`,
     ``,
-    `Think you can beat me?`,
+    `Only ONE player can beat this score.`,
+    `First one takes the crown 👑`,
     ``,
     challengeUrl
   ].join("\n");
@@ -641,7 +642,7 @@ function startGame() {
       </div>
 
       <div style="margin-top:8px;font-size:12px;color:rgba(255,255,255,.58)">
-        Wider hit zone • smoother rhythm • one-thumb friendly
+        Lane-based rhythm • smoother difficulty curve • one-thumb friendly
       </div>
 
       <div style="margin-top:12px;display:flex;justify-content:center;gap:10px;flex-wrap:wrap">
@@ -687,6 +688,7 @@ function runGame() {
   let spawnTimer = 0;
   let last = performance.now();
   let pulse = 0;
+  let lastLaneIndex = 1;
 
   let lastTouchEnd = 0;
   cv.addEventListener("touchend", (e) => {
@@ -695,11 +697,44 @@ function runGame() {
     lastTouchEnd = now;
   }, { passive: false });
 
+  function getLaneCenters() {
+    return [
+      cv.width * 0.28,
+      cv.width * 0.50,
+      cv.width * 0.72
+    ];
+  }
+
+  function getAllowedLaneIndices() {
+    if (currentCity === "New York") return [1];
+    if (currentCity === "Tokyo" || currentCity === "Berlin") return [0, 2];
+    return [0, 1, 2];
+  }
+
+  function pickLaneIndex() {
+    const allowed = getAllowedLaneIndices();
+
+    if (allowed.length === 1) {
+      lastLaneIndex = allowed[0];
+      return lastLaneIndex;
+    }
+
+    const filtered = allowed.filter((i) => i !== lastLaneIndex);
+    const pool = filtered.length > 0 ? filtered : allowed;
+    const picked = pool[Math.floor(Math.random() * pool.length)];
+    lastLaneIndex = picked;
+    return picked;
+  }
+
   function spawn() {
-    const laneOffset = (Math.random() * 24) - 12;
+    const lanes = getLaneCenters();
+    const laneIndex = pickLaneIndex();
+    const laneX = lanes[laneIndex];
+
     notes.push({
       y: -20,
-      x: (cv.width / 2) + laneOffset,
+      x: laneX,
+      lane: laneIndex,
       speed: diff.note * (0.96 + Math.random() * 0.08)
     });
   }
@@ -815,6 +850,18 @@ function runGame() {
       ctx.stroke();
     }
 
+    const lanes = getLaneCenters();
+    const allowedLanes = getAllowedLaneIndices();
+
+    for (let i = 0; i < lanes.length; i++) {
+      if (!allowedLanes.includes(i)) continue;
+      ctx.strokeStyle = "rgba(255,255,255,0.05)";
+      ctx.beginPath();
+      ctx.moveTo(lanes[i], 0);
+      ctx.lineTo(lanes[i], cv.height);
+      ctx.stroke();
+    }
+
     ctx.fillStyle = "rgba(255,255,255,0.03)";
     ctx.fillRect(0, hitY - HIT_WINDOW, cv.width, HIT_WINDOW * 2);
 
@@ -838,7 +885,7 @@ function runGame() {
 
     for (let i = 0; i < notes.length; i++) {
       const note = notes[i];
-      const w = 76;
+      const w = 64;
       const h = 16;
       const x = note.x - (w / 2);
 
