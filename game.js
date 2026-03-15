@@ -72,7 +72,7 @@ const CITY_BGM = {
 };
 
 // ---------------- FEEL TUNING ----------------
-const HIT_WINDOW = 34;
+const HIT_WINDOW = 42;
 const PERFECT_WINDOW = 18;
 const BAD_TAP_PENALTY = 20;
 const MISS_PENALTY = 35;
