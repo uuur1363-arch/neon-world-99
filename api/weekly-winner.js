@@ -2,6 +2,8 @@ export const runtime = "nodejs";
 
 import { supa, currentWeekKey } from "./_db.js";
 
+const MIN_VISIBLE_JACKPOT_LAMPORTS = 10_000_000; // 0.01 SOL
+
 export default async function handler(req, res) {
   try {
     if (req.method !== "GET") {
@@ -81,15 +83,18 @@ export default async function handler(req, res) {
       ? rankedScores[0]
       : null;
 
-    const totalLamports = Number(jackpot?.total_lamports || 0);
-    const totalSol = totalLamports / 1e9;
+    const actualLamports = Number(jackpot?.total_lamports || 0);
+    const visibleLamports = Math.max(actualLamports, MIN_VISIBLE_JACKPOT_LAMPORTS);
+    const visibleSol = visibleLamports / 1e9;
     const entryCount = Number(jackpot?.entry_count || 0);
 
     return res.status(200).json({
       ok: true,
       week_key: weekKey,
-      jackpot_lamports: totalLamports,
-      jackpot_sol: totalSol,
+      jackpot_lamports: visibleLamports,
+      jackpot_sol: visibleSol,
+      actual_jackpot_lamports: actualLamports,
+      actual_jackpot_sol: actualLamports / 1e9,
       entry_count: entryCount,
       status: jackpot?.status || "open",
       leader_wallet: leader?.wallet || null,
