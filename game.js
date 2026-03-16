@@ -72,11 +72,13 @@ const CITY_BGM = {
 };
 
 // ---------------- FEEL TUNING ----------------
-const HIT_WINDOW = 42;
-const PERFECT_WINDOW = 18;
+const HIT_WINDOW = 40;
+const PERFECT_WINDOW = 16;
 const BAD_TAP_PENALTY = 20;
-const MISS_PENALTY = 35;
-const SPAWN_INTERVAL = 0.72;
+const MISS_PENALTY = 40;
+const SPAWN_INTERVAL = 0.66;
+const BONUS_NOTE_CHANCE = 0.08;
+const BONUS_EXTRA_SCORE = 60;
 
 // ---------------- GLOBAL TOUCH / ZOOM LOCK ----------------
 (function lockMobileZoomAndGestures() {
@@ -295,6 +297,35 @@ async function detectGeoInfo() {
       city: existingCity || "unknown"
     };
   }
+}
+
+// ---------------- HAPTICS ----------------
+function vibrateSafe(pattern) {
+  try {
+    if (navigator && typeof navigator.vibrate === "function") {
+      navigator.vibrate(pattern);
+    }
+  } catch {}
+}
+
+function hapticHit() {
+  vibrateSafe(10);
+}
+
+function hapticPerfect() {
+  vibrateSafe([12, 18, 12]);
+}
+
+function hapticMiss() {
+  vibrateSafe(18);
+}
+
+function hapticBonus() {
+  vibrateSafe([10, 18, 10, 18, 18]);
+}
+
+function hapticEnd() {
+  vibrateSafe([30, 30, 30]);
 }
 
 // ---------------- MUSIC ----------------
@@ -631,6 +662,10 @@ function startGame() {
         <div>BEST <b id="b">${bestScore}</b></div>
       </div>
 
+      <div style="margin:4px 0 10px;font-size:12px;color:rgba(255,255,255,.70)">
+        MULTIPLIER <b id="m">x1.00</b>
+      </div>
+
       <canvas id="cv"
         width="390"
         height="600"
@@ -642,7 +677,7 @@ function startGame() {
       </div>
 
       <div style="margin-top:8px;font-size:12px;color:rgba(255,255,255,.58)">
-        Lane-based rhythm • smoother difficulty curve • one-thumb friendly
+        Lane rhythm • haptics • bonus notes • one-thumb friendly
       </div>
 
       <div style="margin-top:12px;display:flex;justify-content:center;gap:10px;flex-wrap:wrap">
@@ -683,11 +718,14 @@ function runGame() {
   let missCount = 0;
   let maxCombo = 0;
   let bpm = diff.bpm;
+  let gameEnded = false;
 
   const notes = [];
+  const fxTexts = [];
   let spawnTimer = 0;
   let last = performance.now();
   let pulse = 0;
+  let shake = 0;
   let lastLaneIndex = 1;
 
   let lastTouchEnd = 0;
@@ -696,6 +734,25 @@ function runGame() {
     if (now - lastTouchEnd <= 350) e.preventDefault();
     lastTouchEnd = now;
   }, { passive: false });
+
+  function spawnFx(text, x, y, color = "#fff", size = 18, life = 0.55) {
+    fxTexts.push({
+      text,
+      x,
+      y,
+      color,
+      size,
+      life,
+      maxLife: life
+    });
+  }
+
+  function getComboMultiplier() {
+    if (combo >= 45) return 1.22;
+    if (combo >= 25) return 1.15;
+    if (combo >= 10) return 1.08;
+    return 1.00;
+  }
 
   function getLaneCenters() {
     return [
@@ -726,20 +783,34 @@ function runGame() {
     return picked;
   }
 
+  function getSpawnIntervalNow() {
+    if (time <= 15) return SPAWN_INTERVAL * 0.88;
+    if (time <= 30) return SPAWN_INTERVAL * 0.92;
+    if (time <= 45) return SPAWN_INTERVAL * 0.96;
+    return SPAWN_INTERVAL;
+  }
+
+  function canSpawnBonus() {
+    return currentCity !== "New York" && Math.random() < BONUS_NOTE_CHANCE;
+  }
+
   function spawn() {
     const lanes = getLaneCenters();
     const laneIndex = pickLaneIndex();
     const laneX = lanes[laneIndex];
+    const bonus = canSpawnBonus();
 
     notes.push({
       y: -20,
       x: laneX,
       lane: laneIndex,
-      speed: diff.note * (0.96 + Math.random() * 0.08)
+      bonus,
+      speed: diff.note * (0.94 + Math.random() * 0.12)
     });
   }
 
   function hit(e) {
+    if (gameEnded) return;
     if (e && e.cancelable) e.preventDefault();
 
     startMusicGesture(currentCity);
@@ -757,24 +828,52 @@ function runGame() {
     }
 
     if (bestIndex >= 0 && bestDistance <= HIT_WINDOW) {
+      const note = notes[bestIndex];
       notes.splice(bestIndex, 1);
 
       combo++;
       hitCount++;
       if (combo > maxCombo) maxCombo = combo;
 
+      const multiplier = getComboMultiplier();
+      let baseScore = 0;
+
       if (bestDistance <= PERFECT_WINDOW) {
-        score += 140 + combo * 8;
+        baseScore = 140 + combo * 8;
+        spawnFx("PERFECT", note.x, hitY - 24, "#00ff9c", 18, 0.50);
+        hapticPerfect();
+        shake = 2.6;
       } else {
-        score += 110 + combo * 6;
+        baseScore = 110 + combo * 6;
+        spawnFx("GOOD", note.x, hitY - 20, "#7afcff", 16, 0.45);
+        hapticHit();
+        shake = 1.6;
       }
 
+      let gained = Math.floor(baseScore * multiplier);
+
+      if (note.bonus) {
+        gained += BONUS_EXTRA_SCORE;
+        spawnFx("BONUS +60", note.x, hitY - 52, "#ffd166", 17, 0.60);
+        hapticBonus();
+        shake = 3.2;
+      }
+
+      score += gained;
       pulse = 1;
+
+      if (combo === 10 || combo === 25 || combo === 45) {
+        spawnFx(`x${getComboMultiplier().toFixed(2)}`, cv.width * 0.5, hitY - 82, accent, 20, 0.65);
+      }
+
     } else {
       combo = 0;
       missCount++;
       score = Math.max(0, score - BAD_TAP_PENALTY);
       pulse = -0.7;
+      shake = 2.2;
+      spawnFx("MISS", cv.width * 0.5, hitY - 18, "#ff8da1", 18, 0.45);
+      hapticMiss();
     }
   }
 
@@ -800,6 +899,7 @@ function runGame() {
       bpm += dx > 0 ? 5 : -5;
       bpm = Math.max(diff.bpm - 18, Math.min(diff.bpm + 18, bpm));
       sx = x;
+      spawnFx(dx > 0 ? "TEMPO +" : "TEMPO -", cv.width * 0.5, cv.height * 0.20, "#c8b6ff", 14, 0.35);
     }
   }, { passive: false });
 
@@ -809,14 +909,17 @@ function runGame() {
   }, { passive: false });
 
   function loop(now) {
+    if (gameEnded) return;
+
     const dt = Math.min(0.033, (now - last) / 1000);
     last = now;
 
     time -= dt;
     spawnTimer += dt * diff.spawn * (bpm / diff.bpm);
     pulse *= 0.9;
+    shake *= 0.82;
 
-    if (spawnTimer > SPAWN_INTERVAL) {
+    if (spawnTimer > getSpawnIntervalNow()) {
       spawnTimer = 0;
       spawn();
     }
@@ -834,10 +937,28 @@ function runGame() {
         missCount++;
         score = Math.max(0, score - MISS_PENALTY);
         pulse = -0.5;
+        shake = 1.6;
+        spawnFx("MISS", cv.width * 0.5, hitY - 18, "#ff8da1", 18, 0.45);
+        hapticMiss();
       }
     }
 
-    ctx.clearRect(0, 0, cv.width, cv.height);
+    for (let i = fxTexts.length - 1; i >= 0; i--) {
+      const fx = fxTexts[i];
+      fx.life -= dt;
+      fx.y -= 24 * dt;
+      if (fx.life <= 0) {
+        fxTexts.splice(i, 1);
+      }
+    }
+
+    ctx.save();
+
+    const sxShake = (Math.random() - 0.5) * shake * 2;
+    const syShake = (Math.random() - 0.5) * shake * 2;
+    ctx.translate(sxShake, syShake);
+
+    ctx.clearRect(-20, -20, cv.width + 40, cv.height + 40);
 
     ctx.fillStyle = "rgba(0,0,0,0.26)";
     ctx.fillRect(0, 0, cv.width, cv.height);
@@ -866,7 +987,7 @@ function runGame() {
     ctx.fillRect(0, hitY - HIT_WINDOW, cv.width, HIT_WINDOW * 2);
 
     ctx.strokeStyle = accent;
-    ctx.lineWidth = 2 + Math.max(0, pulse * 2);
+    ctx.lineWidth = 2 + Math.max(0, pulse * 2.5);
     ctx.beginPath();
     ctx.moveTo(0, hitY);
     ctx.lineTo(cv.width, hitY);
@@ -885,21 +1006,42 @@ function runGame() {
 
     for (let i = 0; i < notes.length; i++) {
       const note = notes[i];
-      const w = 64;
-      const h = 16;
+      const w = note.bonus ? 68 : 64;
+      const h = note.bonus ? 18 : 16;
       const x = note.x - (w / 2);
 
-      ctx.fillStyle = "#ff2d6b";
+      ctx.fillStyle = note.bonus ? "#ffd166" : "#ff2d6b";
       ctx.fillRect(x, note.y, w, h);
-      ctx.strokeStyle = "rgba(255,255,255,.24)";
+
+      ctx.strokeStyle = note.bonus ? "rgba(255,245,190,.75)" : "rgba(255,255,255,.24)";
       ctx.strokeRect(x, note.y, w, h);
+
+      if (note.bonus) {
+        ctx.strokeStyle = "rgba(255,255,255,.35)";
+        ctx.strokeRect(x - 2, note.y - 2, w + 4, h + 4);
+      }
     }
+
+    for (let i = 0; i < fxTexts.length; i++) {
+      const fx = fxTexts[i];
+      const alpha = Math.max(0, fx.life / fx.maxLife);
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = fx.color;
+      ctx.font = `bold ${fx.size}px monospace`;
+      ctx.textAlign = "center";
+      ctx.fillText(fx.text, fx.x, fx.y);
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.restore();
 
     document.getElementById("t").textContent = String(Math.ceil(time));
     document.getElementById("s").textContent = String(score | 0);
     document.getElementById("c").textContent = String(combo);
+    document.getElementById("m").textContent = `x${getComboMultiplier().toFixed(2)}`;
 
     if (time <= 0) {
+      gameEnded = true;
       endGame(score | 0, {
         hitCount,
         missCount,
@@ -917,6 +1059,7 @@ function runGame() {
 // ---------------- GAME END ----------------
 async function endGame(finalScore, stats = {}) {
   stopMusic();
+  hapticEnd();
 
   saveCityScore(currentCity, finalScore);
   bestScore = getCityScore(currentCity);
