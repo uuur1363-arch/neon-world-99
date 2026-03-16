@@ -51,6 +51,16 @@
       box-shadow:0 0 0 1px rgba(255,255,255,.03) inset;
     }
 
+    .challengePanel{
+      margin:0 auto 14px;
+      max-width:430px;
+      border:1px solid rgba(255,45,107,.24);
+      border-radius:14px;
+      padding:16px;
+      background:rgba(255,45,107,.06);
+      box-shadow:0 0 0 1px rgba(255,255,255,.03) inset;
+    }
+
     .label{
       font-size:12px;
       color:#aaa;
@@ -95,6 +105,13 @@
       margin-bottom:6px;
     }
 
+    .challengeScore{
+      font-size:26px;
+      color:#ff6f9f;
+      margin-bottom:6px;
+      font-weight:bold;
+    }
+
     .row{
       display:flex;
       gap:10px;
@@ -123,6 +140,11 @@
       background:#1a1a1a;
       color:#ddd;
       border:1px solid #444;
+    }
+
+    button.challengeBtn{
+      background:#ff2d6b;
+      color:#fff;
     }
 
     .row button{
@@ -170,6 +192,13 @@
     <span class="blue">LIVE</span> Loading weekly stats...
   </div>
 
+  <div class="challengePanel">
+    <div class="label">🔥 ACTIVE CHALLENGE</div>
+    <div id="challengeScore" class="challengeScore">Loading...</div>
+    <div id="challengeMeta" class="leader">Loading active challenge...</div>
+    <button id="challengeBtn" class="challengeBtn" style="display:none;">PLAY CHALLENGE</button>
+  </div>
+
   <div class="panel">
     <div class="label">WEEKLY JACKPOT</div>
     <div class="jackpot" id="jackpot">loading...</div>
@@ -205,6 +234,8 @@
   </div>
 
   <script>
+    let activeChallengeUrl = "";
+
     function shortWallet(w) {
       const s = String(w || "");
       if (!s) return "—";
@@ -235,6 +266,11 @@
       clearPendingState();
       localStorage.setItem("neon99_mode", "ranked");
       location.href = "/ranked.html";
+    }
+
+    function openActiveChallenge() {
+      if (!activeChallengeUrl) return;
+      location.href = activeChallengeUrl;
     }
 
     async function loadWeeklyStats() {
@@ -294,8 +330,65 @@
       }
     }
 
-    loadWeeklyStats();
+    async function loadActiveChallenge() {
+      try {
+        const r = await fetch("/api/active-challenge");
+        const j = await r.json();
+
+        const scoreEl = document.getElementById("challengeScore");
+        const metaEl = document.getElementById("challengeMeta");
+        const btnEl = document.getElementById("challengeBtn");
+
+        if (!r.ok || !j.ok || !j.challenge) {
+          activeChallengeUrl = "";
+          scoreEl.textContent = "No active challenge yet";
+          metaEl.textContent = "Be the first player to create one in ranked mode.";
+          btnEl.style.display = "none";
+          return;
+        }
+
+        const c = j.challenge;
+        const score = Number(c.score_to_beat || 0);
+        const city = String(c.city || "unknown");
+        const country = String(c.country || "");
+        const creator = shortWallet(c.creator_wallet || "");
+        const id = String(c.id || "").trim();
+
+        activeChallengeUrl = `/challenge.html?id=${encodeURIComponent(id)}`;
+
+        scoreEl.textContent = `${score} PTS`;
+        metaEl.innerHTML = `
+          <div class="leaderRow">
+            ${flagImg(country, country)}
+            <span>${city}</span>
+          </div>
+          <div>Created by ${creator}</div>
+          <div>Only one player can take the crown 👑</div>
+        `;
+
+        btnEl.style.display = "block";
+      } catch {
+        const scoreEl = document.getElementById("challengeScore");
+        const metaEl = document.getElementById("challengeMeta");
+        const btnEl = document.getElementById("challengeBtn");
+
+        activeChallengeUrl = "";
+        scoreEl.textContent = "Challenge unavailable";
+        metaEl.textContent = "Could not load active challenge.";
+        btnEl.style.display = "none";
+      }
+    }
+
+    document.getElementById("challengeBtn").addEventListener("click", openActiveChallenge);
+
+    async function init() {
+      await loadWeeklyStats();
+      await loadActiveChallenge();
+    }
+
+    init();
     setInterval(loadWeeklyStats, 10000);
+    setInterval(loadActiveChallenge, 15000);
   </script>
 
 </body>
